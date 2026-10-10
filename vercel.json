@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/:code([a-zA-Z0-9]{6})", "destination": "/index.html" },
+    { "source": "/:code([a-zA-Z0-9]{6})/", "destination": "/index.html" }
+  ]
+}
