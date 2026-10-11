@@ -90,7 +90,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     const presentationBall=document.querySelector('.presentation-ball');
     presentationBall?.classList.toggle('is-spinning',drawAnimation?.phase==='spin');
     presentationBall?.classList.toggle('is-slowing',drawAnimation?.phase==='slowing');
-    $('presentation-caption').textContent=drawAnimation?.phase==='spin'?'Pulsa otra vez para detener y elegir':drawAnimation?.phase==='slowing'?'La ruleta está frenando…':state?.winner?`¡Premio para ${state.players.find(p=>p.winner)?.name??'el ganador'}!`:latest?`¡Salió el ${latest}!`:'La suerte está por llegar';
+    $('presentation-caption').textContent=drawAnimation?.phase==='spin'?'Pulsa otra vez para detener y elegir':drawAnimation?.phase==='slowing'?'La bolilla está por salir…':state?.winner?`¡Premio para ${state.players.find(p=>p.winner)?.name??'el ganador'}!`:latest?`¡Salió el ${latest}!`:'La suerte está por llegar';
     $('presentation-history').replaceChildren();
     if(!drawn.length){const p=document.createElement('p');p.textContent='Aquí aparecerán todas las bolillas sorteadas.';$('presentation-history').append(p);}
     for(const n of [...drawn].reverse()){const ball=document.createElement('div');ball.className='mini-ball';const small=document.createElement('small');small.textContent=letter(n);ball.append(small,document.createTextNode(n));$('presentation-history').append(ball);}
@@ -205,7 +205,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     $('last-ball').querySelector('small').textContent=latest?letter(latest):'¿LISTOS?'; $('last-ball').querySelector('strong').textContent=latest??'?';
     $('last-ball').classList.toggle('is-spinning',drawAnimation?.phase==='spin');
     $('last-ball').classList.toggle('is-slowing',drawAnimation?.phase==='slowing');
-    $('draw-title').textContent=drawAnimation?.phase==='spin'?'La ruleta está girando…':drawAnimation?.phase==='slowing'?'La ruleta está frenando…':state?.winner?'¡Tenemos bingo!':latest?`¡Salió el ${latest}!`:'La suerte está por llegar';
+    $('draw-title').textContent=drawAnimation?.phase==='spin'?'La tómbola está mezclando…':drawAnimation?.phase==='slowing'?'La bolilla está por salir…':state?.winner?'¡Tenemos bingo!':latest?`¡Salió el ${latest}!`:'La suerte está por llegar';
     $('draw-caption').textContent=state?.winner?'Una ronda de aplausos para quien ganó.':drawn.length===75?'Todas las bolillas están en el tablero.':'Una bolilla puede cambiarlo todo.';
     $('draw').textContent=drawAnimation?.phase==='spin'?'◆  Detener y elegir':'✦  Sacar un número';
     $('draw').disabled=busy || drawAnimation?.phase==='reveal' || drawn.length===75 || Boolean(state?.winner) || Boolean(session.hostCode&&!state); $('auto').disabled=busy || drawn.length===75 || Boolean(state?.winner) || Boolean(session.hostCode&&!state);

@@ -14,6 +14,9 @@ header{background:#09051dcc;border-bottom-color:#65dcff38;box-shadow:0 8px 40px 
 .monserrat{border-color:#d651c488}.monserrat .card-art{background:radial-gradient(circle,#a432995d 0,transparent 53%),linear-gradient(145deg,#24105b,#080522)}
 .soon{border-color:#ff786355}.soon .card-art{background:radial-gradient(circle,#ff6c6c55,transparent 60%),linear-gradient(145deg,#401a42,#160923)}
 .latinos{border-color:#159eea88}.latinos .card-art{background:radial-gradient(circle,#0cccf575 0,transparent 55%),linear-gradient(145deg,#063fb5,#050941)}.latinos-logo{display:block;width:235px;height:205px;object-fit:contain;filter:drop-shadow(0 0 18px #00baf1aa)}
+.pasapalabra{border-color:#ffb42f88}.pasapalabra .card-art{background:radial-gradient(circle,#ffb52f66 0,transparent 52%),linear-gradient(145deg,#6b174f,#160923)}.music-rosco{position:relative;width:166px;height:166px;border:13px dotted #ffd75e;border-radius:50%;display:grid;place-items:center;box-shadow:0 0 32px #ff9e2f99,inset 0 0 30px #d52f8c77}.music-rosco b{font-size:57px;color:#8eedff;text-shadow:0 0 16px #54d8ff}.music-rosco span{position:absolute;width:31px;height:31px;display:grid;place-items:center;border:2px solid #fff;border-radius:50%;background:#e43d80;font:700 15px 'Outfit'}.music-rosco span:nth-child(1){top:-10px}.music-rosco span:nth-child(2){right:-10px;bottom:16px}.music-rosco span:nth-child(3){left:-10px;bottom:16px}
+.games{grid-template-columns:repeat(2,1fr)}
+@media(max-width:620px){.games{grid-template-columns:1fr}}
 footer{border-top-color:#ffffff18;color:#999fc7}.ambient{opacity:.45}.ambient-one{background:#ff3f9d}.ambient-two{background:#18c9ff}
 @media(max-width:900px){.game-card:nth-child(n){transform:none}.game-card:not(.soon):hover,.game-card:focus-visible{transform:translateY(-7px)}}
 .lobby-audio b{display:grid;place-items:center;width:28px;height:28px;color:var(--lobby-cyan);font-size:17px}.lobby-audio button{display:none}
@@ -51,3 +54,35 @@ header .vinyl-label img{width:100%;height:100%;object-fit:cover;filter:none}
 .music-status{font-size:11px;line-height:1.5;color:#edc66f;margin:8px 0 0}.music-status:empty{display:none}
 .music-dock button:hover{filter:brightness(1.2)}.music-dock :focus-visible{outline:2px solid #8be9ff;outline-offset:4px}
 @media(max-width:620px){.music-toggle{padding:9px 12px}.music-player{top:calc(100% + 12px)}}
+
+/* Lobby game deck */
+.games{grid-template-columns:repeat(5,minmax(0,1fr));gap:0;align-items:stretch;padding:34px 8px 100px;perspective:1400px}
+.game-card{display:flex;min-height:510px;flex-direction:column;margin:0 -5px;transform-origin:50% 115%;isolation:isolate}
+.game-card:nth-child(1){z-index:1;transform:translateY(16px) rotate(-4.5deg)}
+.game-card:nth-child(2){z-index:2;transform:translateY(2px) rotate(-1.5deg)}
+.game-card:nth-child(3){z-index:3;transform:translateY(-3px)}
+.game-card:nth-child(4){z-index:2;transform:translateY(2px) rotate(1.5deg)}
+.game-card:nth-child(5){z-index:1;transform:translateY(16px) rotate(4.5deg)}
+.game-card .card-art img{max-width:90%;object-fit:contain}
+.casino-club{border-color:#d2b76e88}.casino-club .card-art{background:radial-gradient(circle,#446447,#09271f 72%)}.casino-emblem{display:grid;place-items:center;width:150px;height:160px;border:2px solid #e1c17a;border-radius:65px 65px 18px 18px;box-shadow:inset 0 0 0 5px #1b382c,0 0 30px #d2b76e33;color:#edcc86;align-content:center}.casino-emblem b{font-size:57px;line-height:1.1}.casino-emblem strong{font:700 26px 'Outfit';letter-spacing:2px}.casino-emblem span{font-size:9px;letter-spacing:3px;margin-top:6px}
+.game-card .card-art{height:210px;flex:0 0 210px}
+.game-card .card-copy{display:flex;flex:1;flex-direction:column;padding:23px 22px 27px}
+.game-card .card-copy h2{min-height:62px;font-size:clamp(21px,1.8vw,27px)}
+.game-card .card-copy p{min-height:105px;margin-bottom:0}
+.game-card .enter{margin-top:auto;padding-top:18px}
+.game-card:not(.soon):hover,.game-card:focus-visible{z-index:8;transform:translateY(-22px) rotate(0) scale(1.035)}
+@media(max-width:1100px){.games{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;padding-inline:0}.game-card:nth-child(n){min-height:0;margin:0;transform:none}.game-card .card-copy p{min-height:76px}.game-card:not(.soon):hover,.game-card:focus-visible{transform:translateY(-8px)}}
+@media(max-width:620px){.games{grid-template-columns:1fr;gap:18px}.game-card .card-art{height:190px;flex-basis:190px}.game-card .card-copy h2,.game-card .card-copy p{min-height:auto}}
+
+/* Lobby header: centered title and a player that always opens into the viewport. */
+header{display:grid;grid-template-columns:minmax(190px,1fr) auto minmax(190px,1fr);column-gap:24px}
+header>img{justify-self:start}
+header>span{justify-self:center;white-space:nowrap}
+header .music-dock{position:relative;right:auto;bottom:auto;z-index:150;justify-self:end}
+header .music-toggle{min-height:46px;border-radius:14px;background:#202044f2;border-color:#8a7dd580;color:#f7f6ff;font-weight:600}
+header .music-player{top:calc(100% + 12px);right:0;bottom:auto;max-height:calc(100dvh - 126px)}
+.player-controls button{min-width:46px;min-height:46px;transition:transform .18s,box-shadow .18s}
+.player-controls .play-button{min-width:60px;min-height:60px}
+.player-controls button:hover{transform:translateY(-2px)}
+.player-controls button:active{transform:scale(.94)}
+@media(max-width:620px){header{display:grid;grid-template-columns:1fr auto;column-gap:10px}header>span{display:none}header .music-player{position:fixed;top:88px;right:12px;bottom:auto;max-height:calc(100dvh - 102px)}}

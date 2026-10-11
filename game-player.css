@@ -1,0 +1,55 @@
+
+:root{--gp-bg:#16183d;--gp-surface:#222653;--gp-hover:#303769;--gp-accent:#80e4f4;--gp-ink:#0a2034;--gp-text:#f0f6ff;--gp-muted:#aebbd6;--gp-line:#667ca666}
+:root[data-player-theme=casino]{--gp-bg:#091c16;--gp-surface:#173a2c;--gp-hover:#24503b;--gp-accent:#edcc86;--gp-ink:#17291d;--gp-text:#fff5dc;--gp-muted:#b7c5b5;--gp-line:#d2b36a55}
+:root[data-player-theme=bingo]{--gp-bg:#141139;--gp-surface:#29225b;--gp-hover:#3c3377;--gp-accent:#80e8f5;--gp-ink:#152442;--gp-text:#f5f2ff;--gp-muted:#bcb6dd;--gp-line:#9a85e766}
+:root[data-player-theme=latinos]{--gp-bg:#031448;--gp-surface:#0b327c;--gp-hover:#16499d;--gp-accent:#ffd52f;--gp-ink:#17234b;--gp-text:#fff9df;--gp-muted:#aecfef;--gp-line:#56b8f466}
+:root[data-player-theme=millionaire]{--gp-bg:#0b0827;--gp-surface:#231c55;--gp-hover:#342b76;--gp-accent:#f5c75f;--gp-ink:#241a35;--gp-text:#fff6d7;--gp-muted:#b7add1;--gp-line:#c49b5655}
+:root[data-player-theme=pasapalabra]{--gp-bg:#071c3f;--gp-surface:#103b65;--gp-hover:#18537f;--gp-accent:#55d8ff;--gp-ink:#082345;--gp-text:#effbff;--gp-muted:#a5cadf;--gp-line:#47b7e566}
+body{padding-bottom:82px}
+.game-player-dock,.game-common-nav{position:fixed;bottom:max(16px,env(safe-area-inset-bottom));z-index:150;color:var(--gp-text);font:500 13px 'Outfit',sans-serif}
+.game-player-dock{right:max(16px,env(safe-area-inset-right))}
+.game-common-nav{left:max(16px,env(safe-area-inset-left));display:flex;gap:8px}
+.game-player-dock *,.game-common-nav *{box-sizing:border-box}
+.game-player-dock button,.game-common-nav button,.game-common-nav a{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-width:44px;min-height:46px;padding:10px 15px;margin:0;border:1px solid var(--gp-line);border-radius:14px;background:var(--gp-surface);color:var(--gp-text);font:inherit;text-decoration:none;cursor:pointer;transition:background .18s,transform .18s;box-shadow:none;letter-spacing:normal}
+.game-player-dock button:hover:not(:disabled),.game-common-nav button:hover,.game-common-nav a:hover{background:var(--gp-hover);transform:translateY(-1px)}
+.game-player-dock button:active:not(:disabled),.game-common-nav button:active{transform:scale(.96)}
+.game-player-dock button:disabled{opacity:.4;cursor:default}
+.game-player-dock svg,.game-common-nav svg{display:block;flex:0 0 auto;width:20px;height:20px}
+.game-player-dock svg{overflow:visible}
+.game-player-dock [hidden]{display:none!important}
+.game-player-dock .gp-toggle,.game-common-nav a,.game-common-nav button{box-shadow:0 6px 24px #0004}
+.game-player-dock .gp-toggle svg,.game-common-nav svg{color:var(--gp-accent)}
+.gp-panel{position:absolute;bottom:60px;right:0;width:310px;max-width:calc(100vw - 28px);max-height:calc(100dvh - 100px);overflow:auto;padding:20px 22px;border:1px solid var(--gp-line);border-radius:24px;background:linear-gradient(150deg,var(--gp-surface),var(--gp-bg) 65%);box-shadow:0 22px 65px #0009;text-align:center}
+.gp-heading{display:flex;align-items:center;justify-content:space-between;color:var(--gp-muted);font-size:10px;letter-spacing:2px}
+.game-player-dock .gp-close{padding:10px;min-height:40px;min-width:40px;border:0;background:transparent;color:var(--gp-muted)}
+.gp-vinyl{position:relative;display:grid;place-items:center;width:145px;height:145px;margin:10px auto 24px;border:2px solid #44454d;border-radius:50%;background:repeating-radial-gradient(circle,#111216 0 2px,#292a30 3px,#111216 4px);box-shadow:0 14px 26px #0006;animation:gp-spin 10s linear infinite paused}
+.gp-vinyl.playing{animation-play-state:running}
+.gp-vinyl img{display:block;width:78px;height:78px;object-fit:contain;background:var(--gp-bg);border:3px solid var(--gp-accent);border-radius:50%}
+.gp-title{display:block;color:var(--gp-text);font-size:17px}
+.gp-caption,.gp-status{color:var(--gp-muted);font-size:11px;line-height:1.5;margin:6px 0 18px}
+.gp-status:empty{display:none}
+.gp-times{display:flex;justify-content:space-between;color:var(--gp-muted);font-size:10px;font-variant-numeric:tabular-nums;margin-top:4px}
+.gp-controls{display:flex;justify-content:center;align-items:center;gap:22px;margin:20px 0 24px}
+.game-player-dock .gp-controls button{display:flex;flex-direction:column;gap:4px;width:48px;height:54px;padding:5px;border:0;border-radius:12px;background:transparent;color:var(--gp-muted)}
+.gp-controls button span{font:500 10px 'Outfit',sans-serif;letter-spacing:.2px}
+.game-player-dock .gp-controls svg{width:24px;height:24px}
+.game-player-dock .gp-controls .gp-play{flex-direction:row;width:60px;height:60px;min-height:60px;border-radius:50%;background:var(--gp-accent);color:var(--gp-ink);box-shadow:0 6px 18px #0004}
+.game-player-dock .gp-controls .gp-play:hover{background:var(--gp-accent);filter:brightness(1.1)}
+.game-player-dock .gp-play svg{width:25px;height:25px}
+.gp-volume{display:flex;align-items:center;gap:12px;margin:0;padding:0;color:var(--gp-muted)}
+.gp-volume output{min-width:34px;color:var(--gp-text);font:500 11px 'Outfit',sans-serif}
+.game-player-dock input[type=range]{appearance:none;-webkit-appearance:none;display:block;width:100%;min-width:0;height:22px;margin:0;padding:0;border:0;border-radius:0;outline-offset:3px;background:transparent;cursor:pointer;box-shadow:none}
+.game-player-dock input[type=range]::-webkit-slider-runnable-track{height:4px;border:0;border-radius:8px;background:linear-gradient(to right,var(--gp-accent) var(--fill,0%),var(--gp-line) var(--fill,0%))}
+.game-player-dock input[type=range]::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:12px;height:12px;margin-top:-4px;border:2px solid var(--gp-bg);border-radius:50%;background:var(--gp-accent);box-shadow:0 0 0 1px var(--gp-accent)}
+.game-player-dock input[type=range]::-moz-range-track{height:4px;border:0;border-radius:8px;background:var(--gp-line)}
+.game-player-dock input[type=range]::-moz-range-progress{height:4px;background:var(--gp-accent)}
+.game-player-dock input[type=range]::-moz-range-thumb{width:10px;height:10px;border:2px solid var(--gp-bg);border-radius:50%;background:var(--gp-accent)}
+.game-player-dock input:disabled{opacity:.5;cursor:default}
+.game-player-dock :focus-visible,.game-common-nav :focus-visible{outline:2px solid var(--gp-accent);outline-offset:4px}
+body.projecting>.game-player-dock{display:block!important}
+body.projecting>.game-common-nav{display:flex!important}
+.casino-music-dock[hidden],label[hidden],header a[hidden],.menu-return[hidden],#fullscreen[hidden]{display:none!important}
+.presentation{padding-bottom:82px}
+@keyframes gp-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.gp-vinyl{animation:none}}
+@media(max-width:600px){.game-common-nav{left:12px;gap:6px}.game-player-dock{right:12px}.game-common-nav,.game-player-dock{bottom:max(12px,env(safe-area-inset-bottom))}.common-fullscreen span,.gp-toggle span{display:none}.game-common-nav a,.game-common-nav button{padding:10px;min-width:46px}}

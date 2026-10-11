@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#071b17">
   <title>MONC TICELLO | Noche de juegos</title>
-  <link rel="icon" href="Bingo/assets/favicon.png"><link rel="stylesheet" href="style.css"><script src="app.js" defer></script>
+  <link rel="icon" href="Bingo/assets/favicon.png"><link rel="stylesheet" href="style.css?v=lobby-header-2"><script src="app.js" defer></script>
+  <style>.pasapalabra-logo{display:block;width:min(265px,76%);height:205px;object-fit:contain;filter:drop-shadow(0 0 20px #15bfff99) drop-shadow(0 0 24px #ff9e2f55)}.casino-logo{display:block;width:min(285px,92%);height:205px;object-fit:contain;filter:drop-shadow(0 15px 18px #0008)}</style>
 </head>
 <body>
   <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
@@ -28,11 +29,11 @@
   </div></header>
   <audio id="lobby-music" preload="auto" autoplay></audio>
   <main>
-    <section class="hero"><span class="eyebrow">ELIGE LA PRÓXIMA PARTIDA</span><h1>Una noche.<br><em>Tres formas de jugar.</em></h1><p>Selecciona el juego que aparecerá en la pantalla principal. Cada participante podrá entrar desde su teléfono con el código de la sala.</p></section>
+    <section class="hero"><span class="eyebrow">ELIGE LA PRÓXIMA PARTIDA</span><h1>Una noche.<br><em>Cinco formas de jugar.</em></h1><p>Elige tu próxima partida: juegos para compartir en pantalla, salas para entrar desde el teléfono y tres mesas de casino con fichas virtuales.</p></section>
     <section class="games" aria-label="Juegos disponibles">
       <a class="game-card bingo" href="Bingo/" data-game="bingo">
         <div class="card-art"><img class="bingo-logo" src="Bingo/assets/logo-bingo-night.png" alt="Bingo Night"></div>
-        <div class="card-copy"><span class="status">DISPONIBLE</span><h2>Noche de Bingo</h2><p>Cartones, ruleta, premios por etapas y una pantalla de sorteo para toda la sala.</p><span class="enter">Abrir Bingo <b>→</b></span></div>
+        <div class="card-copy"><span class="status">DISPONIBLE</span><h2>Noche de Bingo</h2><p>Cartones, tómbola, premios por etapas y una pantalla de sorteo para toda la sala.</p><span class="enter">Abrir Bingo <b>→</b></span></div>
       </a>
       <a class="game-card monserrat" href="QuienQuiereSerMillonario/" data-game="monserrat">
         <div class="card-art"><img class="monserrat-logo" src="QuienQuiereSerMillonario/assets/emblema-monserrat.png" alt="Emblema de ¿Quién conoce más a Monserrat?"></div>
@@ -41,6 +42,14 @@
       <a class="game-card latinos" href="100LatinosDijeron/" data-game="latinos">
         <div class="card-art"><img class="latinos-logo" src="100LatinosDijeron/assets/logo-100-latinos.png" alt="100 Latinos dijeron"></div>
         <div class="card-copy"><span class="status">DISPONIBLE</span><h2>100 Latinos dijeron</h2><p>Dos equipos, respuestas populares, errores y un tablero para dirigir desde la pantalla principal.</p><span class="enter">Abrir programa <b>→</b></span></div>
+      </a>
+      <a class="game-card pasapalabra" href="PasapalabraMusical/" data-game="pasapalabra">
+        <div class="card-art"><img class="pasapalabra-logo" src="PasapalabraMusical/assets/logo-pasapalabra.png" alt="Pasapalabra"></div>
+        <div class="card-copy"><span class="status">NUEVO</span><h2>Pasapalabra Musical</h2><p>Cinco segundos para reconocer grandes canciones de los 70, 80, 90 y 2000.</p><span class="enter">Abrir desafío <b>→</b></span></div>
+      </a>
+      <a class="game-card casino-club" href="CasinoClub/" data-game="casino">
+        <div class="card-art"><img class="casino-logo" src="CasinoClub/assets/casino-club.png" alt="Bienvenidos a Casino Club"></div>
+        <div class="card-copy"><span class="status">3 MESAS · EN SALA</span><h2>Casino Club</h2><p>Blackjack, ruleta y craps desde tu teléfono. Fichas y partidas dirigidas por el administrador.</p><span class="enter">Entrar al casino <b>→</b></span></div>
       </a>
     </section>
     <section id="code-resolver" class="resolver" hidden aria-live="polite"><div class="spinner"></div><div><strong>Buscando tu sala…</strong><p id="resolver-message">Estamos identificando el juego del código.</p></div></section>

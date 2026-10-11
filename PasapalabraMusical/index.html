@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#160b36">
+  <title>Pasapalabra Musical | MONC TICELLO</title>
+  <link rel="icon" href="assets/logo-pasapalabra.png">
+  <link rel="stylesheet" href="style.css">
+  <style>.brand-logo{display:block;object-fit:contain;filter:drop-shadow(0 0 16px #14c8ff88)}header .brand-logo{width:74px;height:68px}.setup-logo{display:block;width:min(360px,78vw);max-height:240px;margin:0 0 24px;object-fit:contain}.setup-copy .setup-logo{filter:drop-shadow(0 0 26px #14c8ff77)}</style>
+  <script src="app.js" defer></script>
+<link rel="stylesheet" href="../game-player.css?v=themes-2"><script src="../game-player.js?v=themes-2" defer></script></head>
+<body>
+  <header><a href="../">← Juegos</a><img class="brand-logo" src="assets/logo-pasapalabra.png" alt="Pasapalabra Musical"><button id="fullscreen" type="button">⛶ Pantalla completa</button></header>
+  <main>
+    <section id="setup" class="setup">
+      <div class="setup-copy"><img class="setup-logo" src="assets/logo-pasapalabra.png" alt="Pasapalabra"><span class="eyebrow">EDICIÓN MUSICAL</span><h1>Tu memoria musical<br><em>contra el reloj.</em></h1><p>Escucha cinco segundos, di el título y completa el rosco. En cada partida cambian las canciones.</p></div>
+      <form id="setup-form" class="setup-card">
+        <h2>Prepara la ronda</h2>
+        <label>Nombre del jugador<input id="player-name" maxlength="24" value="Jugador 1"></label>
+        <fieldset><legend>Décadas</legend><label><input type="checkbox" name="decade" value="70" checked><span>70</span></label><label><input type="checkbox" name="decade" value="80" checked><span>80</span></label><label><input type="checkbox" name="decade" value="90" checked><span>90</span></label><label><input type="checkbox" name="decade" value="00" checked><span>2000</span></label></fieldset>
+        <p class="note">Cada década incluye dos opciones para las 26 letras. Los fragmentos se transmiten en línea; no se descargan ni se guardan.</p>
+        <button class="primary" type="submit">Crear rosco →</button>
+      </form>
+    </section>
+
+    <section id="game" class="game" hidden>
+      <div class="game-top"><div><span id="player-label">JUGADOR 1</span><strong id="score">0 aciertos</strong></div><div class="round-progress"><span id="round-count">1 / 26</span><button id="restart" type="button">Nueva partida</button></div></div>
+      <div class="game-layout">
+        <div id="rosco" class="rosco" aria-label="Estado del rosco"><div class="rosco-center"><span>LETRA</span><strong id="current-letter">A</strong><small id="decade">AÑOS 80</small></div></div>
+        <article class="challenge">
+          <div class="timer"><span id="timer-bar"></span></div>
+          <p id="letter-clue" class="letter-clue">Empieza por A</p>
+          <h2 id="instruction">¿Preparado para escuchar?</h2>
+          <p id="load-status" class="load-status">Buscando una versión disponible…</p>
+          <div class="listen-zone"><button id="listen" class="listen" type="button" disabled><span>▶</span> ESCUCHAR 5 SEGUNDOS</button><small>Máximo 2 escuchas por canción</small></div>
+          <div class="answer-actions"><button id="correct" class="correct" type="button" disabled>✓ Acertó</button><button id="pass" class="pass" type="button" disabled>Pasapalabra</button><button id="wrong" class="wrong" type="button" disabled>✕ Falló</button></div>
+          <div id="answer" class="answer" hidden><img id="cover" alt="Portada"><div><span>ERA</span><h3 id="song-title"></h3><p id="song-artist"></p><a id="store-link" target="_blank" rel="noopener">Ver canción ↗</a></div></div>
+          <button id="reveal" class="reveal" type="button" disabled>Mostrar respuesta</button>
+          <p class="courtesy">Fragmentos promocionales proporcionados por cortesía de iTunes.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="results" class="results" hidden><span class="eyebrow">RONDA TERMINADA</span><h1 id="result-title"></h1><p id="result-copy"></p><div id="result-stats"></div><button id="play-again" class="primary" type="button">Jugar otra vez</button><a href="../">Volver al lobby</a></section>
+  </main>
+  <audio id="preview" preload="auto"></audio>
+</body>
+</html>
