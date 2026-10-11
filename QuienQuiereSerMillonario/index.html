@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#07051b">
+  <title>MONC TICELLO | ¿Quién conoce más a Monserrat?</title>
+  <script>if(location.protocol!=='file:'){const b=document.createElement('base'),parts=location.pathname.split('/').filter(Boolean),leaf=parts.at(-1)??'',room=/^[a-z0-9]{6}$/i.test(leaf);b.href=room?location.pathname.replace(/[^/]+\/?$/,''):location.pathname.endsWith('/')?location.pathname:location.pathname.replace(/[^/]*$/,'');document.head.append(b);}</script>
+  <link rel="icon" href="assets/favicon.png"><link rel="stylesheet" href="style.css">
+  <script src="auth.js" defer></script><script src="app.js" defer></script>
+</head>
+<body>
+<audio id="music" src="assets/main-theme.mp3" autoplay loop preload="auto" hidden></audio>
+<header class="topbar">
+  <div class="topbar-left"><a class="brand game-brand" href="./"><img src="assets/emblema-monserrat.png" alt="¿Quién conoce más a Monserrat?"></a><a class="menu-return" href="../">← Volver al menú</a></div>
+  <span class="game-title">¿QUIÉN CONOCE MÁS A MONSERRAT?</span>
+  <label class="volume">♫ <input id="volume" type="range" min="0" max="100" value="22" step="1" aria-label="Volumen"><output id="volume-value" for="volume">22%</output></label>
+</header>
+
+<main>
+  <section id="entry-view" class="entry-view">
+    <div class="entry-card panel">
+      <img class="show-emblem entry-emblem" src="assets/emblema-monserrat.png" alt="Emblema de ¿Quién conoce más a Monserrat?">
+      <div class="eyebrow">EL CONOCIMIENTO TAMBIÉN DA PREMIO</div>
+      <h1>¿Quién conoce más<br><em>a Monserrat?</em></h1>
+      <p>Ingresa el código que aparece en la pantalla principal.</p>
+      <form id="code-form"><label for="room-code">Código de la sala</label><input id="room-code" maxlength="6" minlength="6" required autocomplete="off" autocapitalize="characters" placeholder="MILLON"><button class="primary" type="submit">Entrar al juego →</button></form>
+      <div id="entry-message" class="message" role="status"></div>
+      <form id="join-form" hidden><div id="found-room" class="found-room"></div><label for="player-name">Tu nombre o apodo</label><input id="player-name" maxlength="30" required autocomplete="given-name"><button class="primary" type="submit">Unirme a la partida ✦</button><button id="change-code" class="text" type="button">← Cambiar código</button></form>
+      <div class="admin-entry"><span>¿Organizas el juego?</span><button id="admin-login" class="secondary">Panel de administrador</button></div>
+    </div>
+  </section>
+
+  <section id="admin-view" hidden>
+    <div class="admin-bar"><div><span class="eyebrow">PANEL DE ADMINISTRADOR</span><strong id="admin-email"></strong></div><div><button id="questions-button" class="secondary">Banco de preguntas</button><button id="logout" class="text">Cerrar sesión</button></div></div>
+    <div class="host-grid">
+      <section class="panel room-manager"><div><span class="eyebrow">TUS PARTIDAS</span><h2>Salas</h2></div><select id="host-rooms"><option value="">Selecciona una sala</option></select><button id="create-room-button" class="primary">+ Crear sala</button></section>
+      <section class="panel host-stage">
+        <div class="stage-head"><div><span id="host-status" class="eyebrow">SALA DE ESPERA</span><h2 id="host-room-title">Crea o selecciona una sala</h2></div><button id="fullscreen" class="secondary" disabled>⛶ Pantalla completa</button></div>
+        <div id="host-content" class="host-content"><p class="empty">Aquí dirigirás la partida, los comodines y cada revelación.</p></div>
+        <div id="host-actions" class="host-actions"></div>
+      </section>
+      <aside class="panel players-panel"><div class="section-head"><h3>Participantes</h3><span id="player-count">0</span></div><div id="host-players" class="players"><p class="empty">Aún no entra nadie.</p></div></aside>
+    </div>
+  </section>
+
+  <section id="player-view" hidden>
+    <div class="phone-shell panel">
+      <div class="player-head"><div><span id="player-room" class="eyebrow"></span><h2 id="player-name-title"></h2></div><button id="leave-room" class="text">Salir</button></div>
+      <div id="player-content" class="player-content"></div>
+    </div>
+  </section>
+</main>
+
+<dialog id="login-dialog"><form id="login-form"><button class="close" type="button" data-close="login-dialog">×</button><span class="eyebrow">ACCESO ADMINISTRATIVO</span><h2>Dirige el programa</h2><p>Usa la misma cuenta autorizada del panel de Bingo.</p><label for="login-email">Correo</label><input id="login-email" type="email" required autocomplete="username"><label for="login-password">Contraseña</label><input id="login-password" type="password" required autocomplete="current-password"><p id="login-error" class="error"></p><button class="primary" type="submit">Ingresar →</button><button id="demo-admin" class="secondary" type="button" hidden>Probar modo demostración</button></form></dialog>
+
+<dialog id="create-room-dialog"><form id="create-room-form"><button class="close" type="button" data-close="create-room-dialog">×</button><span class="eyebrow">NUEVA PARTIDA</span><h2>Abre el estudio</h2><label for="room-title">Nombre de la sala</label><input id="room-title" maxlength="60" required value="¿Quién conoce más a Monserrat?"><label for="question-count">Cantidad de preguntas</label><input id="question-count" type="number" min="1" max="15" value="15" required><p class="hint">Se elegirán preguntas activas del banco.</p><button class="primary" type="submit">Crear sala ✦</button></form></dialog>
+
+<dialog id="questions-dialog" class="wide-dialog"><button class="close" type="button" data-close="questions-dialog">×</button><div class="question-admin-head"><div><span class="eyebrow">CONTENIDO DEL JUEGO</span><h2>Banco de preguntas</h2></div><button id="new-question" class="primary">+ Agregar pregunta</button></div><div id="questions-list" class="questions-list"></div></dialog>
+
+<dialog id="question-dialog"><form id="question-form"><button class="close" type="button" data-close="question-dialog">×</button><input id="question-id" type="hidden"><span class="eyebrow">EDITOR DE PREGUNTAS</span><h2 id="question-dialog-title">Nueva pregunta</h2><label for="question-text">Pregunta</label><textarea id="question-text" maxlength="300" required></textarea><div class="option-editor"><label>A<input id="option-0" maxlength="160" required></label><label>B<input id="option-1" maxlength="160" required></label><label>C<input id="option-2" maxlength="160" required></label><label>D<input id="option-3" maxlength="160" required></label></div><label for="correct-index">Respuesta correcta</label><select id="correct-index"><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option></select><label for="expert-hint">Pista del experto</label><textarea id="expert-hint" maxlength="300" required placeholder="Una orientación útil sin regalar necesariamente la respuesta."></textarea><div class="form-row"><label for="difficulty">Dificultad<select id="difficulty"><option value="1">1 · Fácil</option><option value="2">2</option><option value="3">3 · Media</option><option value="4">4</option><option value="5">5 · Difícil</option></select></label><label class="check"><input id="question-active" type="checkbox" checked> Pregunta activa</label></div><button class="primary" type="submit">Guardar pregunta</button><button id="delete-question" class="danger" type="button" hidden>Eliminar pregunta</button></form></dialog>
+
+<dialog id="invite-dialog"><button class="close" type="button" data-close="invite-dialog">×</button><span class="eyebrow">INVITA A JUGAR</span><h2>Código de la sala</h2><div id="invite-code" class="big-code"></div><input id="invite-link" readonly><button id="copy-link" class="primary">Copiar invitación</button></dialog>
+
+<div id="toast" class="toast" hidden role="status"></div>
+
+<section id="presentation" class="presentation" hidden tabindex="-1">
+  <header><img src="assets/emblema-monserrat.png" alt="¿Quién conoce más a Monserrat?"><span>¿QUIÉN CONOCE MÁS A MONSERRAT?</span></header>
+  <div id="presentation-content" class="presentation-content"></div>
+  <button id="presentation-room" class="presentation-room"><span>CÓDIGO</span><strong id="presentation-code">------</strong><small>Esc para salir</small></button>
+</section>
+</body>
+</html>
