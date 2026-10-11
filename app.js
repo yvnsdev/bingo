@@ -4,7 +4,10 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
   const music=document.getElementById('lobby-music'),volume=document.getElementById('lobby-volume'),volumeValue=document.getElementById('lobby-volume-value');
   // Song artwork displayed on the rotating vinyl label.
   const tracks=[
-    {src:'100LatinosDijeron/100 Latinos Dijeron, Musica de Fondo.mp3',title:'Música de fondo',artist:'100 Latinos Dijeron',cover:'100LatinosDijeron/assets/logo-100-latinos.png'}
+    {src:'And So It Begins – Artificial Music (No Copyright Music) - Audio Library.mp3',title:'And So It Begins',artist:'Artificial Music',cover:'And so it begins portada.jpg'},
+    {src:'Bonus Points - Late Night Thoughts - Czech Vibes Sound.mp3',title:'Late Night Thoughts',artist:'Bonus Points',cover:'late night thougghs.jpg'},
+    {src:'Dj Quads - It just makes me happy - Chilled Monkey.mp3',title:'It Just Makes Me Happy',artist:'DJ Quads',cover:'it justmakes me happy.jpg'},
+    {src:'LAKEY INSPIRED - Better Days - LAKEY INSPIRED.mp3',title:'Better Days',artist:'LAKEY INSPIRED',cover:'better days.jpg'}
   ];
   const readSetting=(storage,key)=>{try{return window[storage].getItem(key)}catch{return null}};
   const saveSetting=(storage,key,value)=>{try{window[storage].setItem(key,value)}catch{}};
