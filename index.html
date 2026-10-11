@@ -7,7 +7,8 @@
 </head>
 <body>
   <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
-  <header><img src="Bingo/assets/monc-ticello-horizontal.png" alt="MONC TICELLO"><span>NOCHE DE JUEGOS</span></header>
+  <header><img src="Bingo/assets/monc-ticello-horizontal.png" alt="MONC TICELLO"><span>NOCHE DE JUEGOS</span><div class="lobby-audio" aria-label="Volumen de la música del lobby"><b aria-hidden="true">♫</b><input id="lobby-volume" type="range" min="0" max="100" value="25" aria-label="Volumen de la música"><output id="lobby-volume-value" for="lobby-volume">25%</output></div></header>
+  <audio id="lobby-music" preload="auto"></audio>
   <main>
     <section class="hero"><span class="eyebrow">ELIGE LA PRÓXIMA PARTIDA</span><h1>Una noche.<br><em>Tres formas de jugar.</em></h1><p>Selecciona el juego que aparecerá en la pantalla principal. Cada participante podrá entrar desde su teléfono con el código de la sala.</p></section>
     <section class="games" aria-label="Juegos disponibles">
