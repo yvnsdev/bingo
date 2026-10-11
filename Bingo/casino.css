@@ -266,6 +266,18 @@ body.entry-screen .player-info{display:none}
 body.entry-screen .entry-logo.bingo-night-logo{width:190px;height:190px;margin:0 auto 12px}
 body.entry-screen footer{width:100%;margin-top:26px}
 @media(max-width:540px){body.entry-screen main{width:min(100% - 20px,1320px);padding:18px 0}body.entry-screen .join-panel{padding:25px 19px}body.entry-screen .entry-logo.bingo-night-logo{width:150px;height:150px}}
+
+/* La portada comparte la misma composición del concurso de preguntas. */
+body.entry-screen .topbar{display:flex}
+.topbar-left{display:flex;align-items:center;gap:18px;min-width:0}.topbar-left .brand-title{margin:0;flex:0 0 auto}.topbar .menu-return{position:static;display:inline-flex;align-items:center;padding:8px 11px;background:#173e31;border-color:#a68d4c66;box-shadow:none;backdrop-filter:none;white-space:nowrap}
+body.entry-screen main{display:block;min-height:auto;padding:0 55px}
+body.entry-screen #player-view{min-height:calc(100vh - 160px);display:grid;place-items:center;padding:40px 0}
+body.entry-screen .player-layout{width:min(510px,100%)}
+body.entry-screen .join-panel{padding:38px}
+.entry-title{margin:15px 0 14px;text-align:center;font:600 clamp(42px,6vw,62px)/.96 'Outfit',sans-serif;letter-spacing:-2px;color:#fff6df}.entry-title em{font-style:normal;color:#e6bf60}.entry-tagline{text-align:center;color:#e6bf60}.join-panel>p{max-width:390px;margin:0 auto 20px}.join-panel form{text-align:left}.organizer-entry{display:flex;align-items:center;justify-content:space-between;gap:15px}.organizer-entry .light-btn{width:auto;min-width:210px;margin:0}
+body.entry-screen footer{margin-top:0}
+@media(max-width:700px){.topbar-left{gap:8px}.topbar .menu-return{padding:7px 9px;font-size:10px}.volume-label{display:none}}
+@media(max-width:540px){body.entry-screen main{width:min(100% - 20px,1320px);padding:0}.topbar{gap:8px;padding-inline:10px}.topbar-left .brand-title{width:56px;height:56px}.topbar .menu-return{font-size:0}.topbar .menu-return::after{content:'← Menú';font-size:10px}body.entry-screen #player-view{min-height:calc(100vh - 120px);padding:24px 0}body.entry-screen .join-panel{padding:25px 19px}.entry-title{font-size:43px}.organizer-entry{align-items:stretch;flex-direction:column}.organizer-entry .light-btn{width:100%;min-width:0}}
 @keyframes roulette-start { from { transform: rotate(var(--wheel-stop, 0deg)); } to { transform: rotate(calc(var(--wheel-stop, 0deg) + var(--wheel-ramp-distance))); } }
 @keyframes roulette-turn { from { transform: rotate(calc(var(--wheel-stop, 0deg) + var(--wheel-ramp-distance))); } to { transform: rotate(calc(var(--wheel-stop, 0deg) + var(--wheel-ramp-distance) + 360deg)); } }
 @keyframes roulette-brake { from { transform: rotate(var(--wheel-start, 0deg)); } to { transform: rotate(calc(var(--wheel-start, 0deg) + var(--wheel-brake-distance))); } }
