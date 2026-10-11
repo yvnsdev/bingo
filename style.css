@@ -18,3 +18,36 @@ footer{border-top-color:#ffffff18;color:#999fc7}.ambient{opacity:.45}.ambient-on
 @media(max-width:900px){.game-card:nth-child(n){transform:none}.game-card:not(.soon):hover,.game-card:focus-visible{transform:translateY(-7px)}}
 .lobby-audio b{display:grid;place-items:center;width:28px;height:28px;color:var(--lobby-cyan);font-size:17px}.lobby-audio button{display:none}
 .lobby-audio{display:flex;align-items:center;gap:9px;padding:8px 11px;border:1px solid #65dcff55;border-radius:12px;background:#11183ddd;box-shadow:0 8px 25px #0005}.lobby-audio button{display:grid;place-items:center;width:32px;height:32px;padding:0;border:1px solid #68e4ff77;border-radius:8px;background:#172759;color:var(--lobby-cyan);font-weight:800;cursor:pointer}.lobby-audio input{--volume:25%;appearance:none;-webkit-appearance:none;width:110px;height:6px;border:0;border-radius:999px;background:linear-gradient(90deg,var(--lobby-cyan) 0 var(--volume),#525978 var(--volume) 100%);cursor:pointer}.lobby-audio input::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border:2px solid #eaffff;border-radius:50%;background:var(--lobby-cyan);box-shadow:0 0 12px #62e8ff}.lobby-audio input::-moz-range-thumb{width:13px;height:13px;border:2px solid #eaffff;border-radius:50%;background:var(--lobby-cyan)}.lobby-audio output{min-width:34px;color:#d8faff;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}@media(max-width:620px){.lobby-audio{gap:6px;padding:6px}.lobby-audio input{width:70px}.lobby-audio output{display:none}}
+/* Floating lobby turntable */
+header{position:relative;z-index:20}
+.music-dock{position:relative}
+.music-toggle,.music-player button{font:inherit;cursor:pointer;color:#d8faff;border:1px solid #65dcff55;background:#17204c;border-radius:12px}
+.music-toggle{display:flex;align-items:center;gap:9px;padding:11px 16px;font-size:18px}
+header .music-toggle span{display:inline;color:#d8faff;font-size:12px;letter-spacing:0}
+.music-player{position:absolute;top:calc(100% + 14px);right:0;width:300px;max-width:calc(100vw - 36px);max-height:calc(100dvh - 110px);overflow:auto;padding:18px;border:1px solid #8f83dd77;border-radius:22px;background:linear-gradient(145deg,#20234cf5,#120e2bfA);box-shadow:0 24px 70px #0009,0 0 35px #855bff22;backdrop-filter:blur(24px)}
+.player-heading{display:flex;align-items:center;justify-content:space-between}
+header .player-heading span{display:inline;font-size:9px;letter-spacing:2px;color:#b9bce1}
+.music-player .player-heading button{width:30px;height:30px;font-size:22px;background:transparent;border-color:transparent}
+.player-record{display:grid;place-items:center;padding:16px 0}
+.music-vinyl{display:grid;place-items:center;width:150px;height:150px;border-radius:50%;border:2px solid #46465b;background:repeating-radial-gradient(circle,#111119 0 2px,#272733 3px,#111119 4px);box-shadow:0 12px 25px #0008;animation:spin 8s linear infinite;animation-play-state:paused;position:relative}
+.music-vinyl::after{content:'';position:absolute;width:9px;height:9px;background:#111022;border:2px solid #bbb8d8;border-radius:50%}
+.music-vinyl.is-playing{animation-play-state:running}
+.vinyl-label{width:72px;height:72px;overflow:hidden;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#60e6ff,#985fee 55%,#ff62ab)}
+header .vinyl-label span{display:block;text-align:center;font:700 13px/1.9 'Outfit',sans-serif;letter-spacing:2px;color:#fff}
+header .vinyl-label img{width:100%;height:100%;object-fit:cover;filter:none}
+.track-info{text-align:center}.track-info strong{font:600 19px 'Outfit',sans-serif}.track-info p{margin:5px 0;color:#b9bce1;font-size:12px}
+.track-progress{margin:17px 2px 3px}.track-progress input{--progress:0%;display:block;width:100%;height:5px;margin:0;appearance:none;-webkit-appearance:none;border:0;border-radius:999px;background:linear-gradient(90deg,#79e7ff 0 var(--progress),#4d5272 var(--progress) 100%);cursor:pointer}.track-progress input::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border:2px solid #fff;border-radius:50%;background:#79e7ff;box-shadow:0 0 10px #62e8ff99}.track-progress input::-moz-range-thumb{width:11px;height:11px;border:2px solid #fff;border-radius:50%;background:#79e7ff;box-shadow:0 0 10px #62e8ff99}.track-times{display:flex;justify-content:space-between;margin-top:7px;color:#9da5c7;font-size:10px;font-variant-numeric:tabular-nums}
+.player-controls{display:flex;justify-content:center;align-items:center;gap:22px;margin:20px 0 18px}
+.player-controls button{display:grid;place-items:center;width:44px;height:44px;padding:0;border-radius:50%;border:1px solid #a8b9ff26;background:#ffffff06;color:#cbd7f4;transition:transform .18s,background .18s,box-shadow .18s,border-color .18s;touch-action:manipulation}
+.player-controls svg{display:block;width:21px;height:21px;fill:currentColor;pointer-events:none}
+.player-controls .play-button{width:58px;height:58px;border:1px solid #c4f7ff;background:linear-gradient(145deg,#c1f8ff,#73d9f5);color:#111936;box-shadow:0 5px 18px #54d8ff30,inset 0 1px 0 #ffffffaa}
+.player-controls .play-button svg{width:25px;height:25px}.player-controls .icon-play{transform:translateX(-1px)}
+.player-controls .icon-pause,.player-controls .is-playing .icon-play{display:none}.player-controls .is-playing .icon-pause{display:block}
+.player-controls button:hover{background:#96bdff18;border-color:#a5dfff80;transform:translateY(-2px)}
+.player-controls .play-button:hover{background:linear-gradient(145deg,#dcfcff,#8ee6ff);box-shadow:0 7px 24px #54d8ff50}
+.player-controls button:active{transform:scale(.94)}
+.music-player .lobby-audio{margin-top:14px;box-shadow:none;background:transparent;border:0;padding:4px 0}
+.music-player .lobby-audio input{flex:1;min-width:0;width:100%}.music-player .lobby-audio output{display:block}
+.music-status{font-size:11px;line-height:1.5;color:#edc66f;margin:8px 0 0}.music-status:empty{display:none}
+.music-dock button:hover{filter:brightness(1.2)}.music-dock :focus-visible{outline:2px solid #8be9ff;outline-offset:4px}
+@media(max-width:620px){.music-toggle{padding:9px 12px}.music-player{top:calc(100% + 12px)}}

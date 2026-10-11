@@ -7,8 +7,26 @@
 </head>
 <body>
   <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
-  <header><img src="Bingo/assets/monc-ticello-horizontal.png" alt="MONC TICELLO"><span>NOCHE DE JUEGOS</span><div class="lobby-audio" aria-label="Volumen de la música del lobby"><b aria-hidden="true">♫</b><input id="lobby-volume" type="range" min="0" max="100" value="25" aria-label="Volumen de la música"><output id="lobby-volume-value" for="lobby-volume">25%</output></div></header>
-  <audio id="lobby-music" preload="auto"></audio>
+  <header><img src="Bingo/assets/monc-ticello-horizontal.png" alt="MONC TICELLO"><span>NOCHE DE JUEGOS</span><div class="music-dock">
+    <button id="music-toggle" class="music-toggle" type="button" aria-expanded="false" aria-controls="music-player">&#9835; <span>Música</span></button>
+    <section id="music-player" class="music-player" aria-label="Reproductor de música del lobby" hidden>
+      <div class="player-heading"><span>MÚSICA DEL LOBBY</span><button id="music-close" type="button" aria-label="Cerrar reproductor">&times;</button></div>
+      <div class="player-record"><div id="music-vinyl" class="music-vinyl" aria-hidden="true"><div class="vinyl-label"><img id="music-cover" alt="" hidden><span id="music-cover-placeholder">MONC<br>&#9835;</span></div></div></div>
+      <div class="track-info" aria-live="polite"><strong id="music-title"></strong><p id="music-artist"></p></div>
+      <div class="track-progress">
+        <input id="music-progress" type="range" min="0" max="1000" value="0" step="1" aria-label="Posici&#243;n de la canci&#243;n">
+        <div class="track-times"><time id="music-current">0:00</time><time id="music-duration">0:00</time></div>
+      </div>
+      <div class="player-controls" role="group" aria-label="Controles de reproducci&#243;n">
+        <button id="music-previous" type="button" aria-label="Canci&#243;n anterior" title="Canci&#243;n anterior"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 5v14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M19 5.5v13a.8.8 0 0 1-1.25.66l-9-6.5a.8.8 0 0 1 0-1.32l9-6.5A.8.8 0 0 1 19 5.5Z"/></svg></button>
+        <button id="music-play" class="play-button" type="button" aria-label="Reproducir" title="Reproducir"><svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 4.8v14.4a1 1 0 0 0 1.52.85l11-7.2a1 1 0 0 0 0-1.7l-11-7.2A1 1 0 0 0 8 4.8Z"/></svg><svg class="icon-pause" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="4" width="5" height="16" rx="1.5"/><rect x="14" y="4" width="5" height="16" rx="1.5"/></svg></button>
+        <button id="music-next" type="button" aria-label="Siguiente canci&#243;n" title="Siguiente canci&#243;n"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 5v14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M5 5.5v13a.8.8 0 0 0 1.25.66l9-6.5a.8.8 0 0 0 0-1.32l-9-6.5A.8.8 0 0 0 5 5.5Z"/></svg></button>
+      </div>
+      <div class="lobby-audio" aria-label="Volumen de la música del lobby"><b aria-hidden="true">&#9835;</b><input id="lobby-volume" type="range" min="0" max="100" value="25" aria-label="Volumen de la música"><output id="lobby-volume-value" for="lobby-volume">25%</output></div>
+      <p id="music-status" class="music-status" role="status"></p>
+    </section>
+  </div></header>
+  <audio id="lobby-music" preload="auto" autoplay></audio>
   <main>
     <section class="hero"><span class="eyebrow">ELIGE LA PRÓXIMA PARTIDA</span><h1>Una noche.<br><em>Tres formas de jugar.</em></h1><p>Selecciona el juego que aparecerá en la pantalla principal. Cada participante podrá entrar desde su teléfono con el código de la sala.</p></section>
     <section class="games" aria-label="Juegos disponibles">
