@@ -99,3 +99,11 @@ img.game-emblem{width:120px;height:auto;margin:0 auto 18px}
 .presentation .question-clock{width:210px;margin-bottom:8px}
 .presentation-content{align-content:safe center}
 @media(max-width:540px){.question-clock{width:170px;top:4px;padding:8px 15px 12px}.question-clock [data-clock-value]{font-size:32px}}
+
+.player-tools{padding:14px;border:1px solid #f5c75f88;border-radius:14px;background:linear-gradient(180deg,#242062,#100d37);margin:12px 0 18px}
+.player-tools .player-lifelines{margin:10px 0;gap:8px}
+.player-tools .lifeline{font-size:12px;min-height:48px;padding:8px 6px}
+.player-tools .lifeline:disabled{opacity:.7}
+.player-tools .lifeline.used{opacity:.4;animation:none}
+.player-tools .hint{margin:0;color:#d0cbe7;font-size:11px}
+@media(max-width:540px){#player-view .phone-shell{padding:14px;margin:16px auto}#player-view .player-head h2{margin:6px 0;font-size:22px}#player-content>.game-emblem{display:none}.player-tools{padding:12px}}

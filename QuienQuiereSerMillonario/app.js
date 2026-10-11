@@ -93,7 +93,7 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
   function updateQuestionClock(){
     const remaining=secondsLeft();
     document.querySelectorAll('[data-question-clock]').forEach(el=>{el.querySelector('[data-clock-value]').textContent=String(remaining).padStart(2,'0');el.querySelector('[data-clock-label]').textContent=remaining?'TIEMPO PARA RESPONDER':'TIEMPO TERMINADO';el.style.setProperty('--remaining',(remaining/20*100)+'%');el.classList.toggle('expired',remaining===0);el.classList.toggle('urgent',remaining>0&&remaining<=5);});
-    if(state?.status==='question'&&remaining===0)document.querySelectorAll('#player-content [data-answer], #player-content [data-player-lifeline]').forEach(el=>el.disabled=true);
+    if(state?.status==='question'&&remaining===0)document.querySelectorAll('#player-content [data-answer], #player-tools [data-player-lifeline]').forEach(el=>el.disabled=true);
   }
   async function api(action,payload={}){
     if(online){
@@ -178,15 +178,18 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
   }
   function playerLifelines(){
-    if(state.status!=='question')return '';
-    return '<div class="player-lifelines" aria-label="Tus comodines">'+Object.entries(lifelineLabels).map(([kind,label])=>`<button class="lifeline${state.lifelines?.[kind]?' used':''}" data-player-lifeline="${kind}" ${busy||state.lifelines?.[kind]||secondsLeft()<=0?'disabled':''}>${label}</button>`).join('')+'</div>';
+    const available=state.status==='question'&&secondsLeft()>0;
+    const help=state.status==='lobby'||state.status==='rules'?'Se activan al comenzar cada pregunta.':state.status==='question'?(available?'Cada uno se usa una vez por partida.':'Tiempo terminado: espera la siguiente pregunta.'):'Tus comodines usados quedan marcados.';
+    return '<strong class="eyebrow">TUS COMODINES</strong><div class="player-lifelines">'+Object.entries(lifelineLabels).map(([kind,label])=>`<button type="button" class="lifeline${state.lifelines?.[kind]?' used':''}" data-player-lifeline="${kind}" aria-label="${esc(label)}${state.lifelines?.[kind]?' (usado)':''}" ${busy||state.lifelines?.[kind]||!available?'disabled':''}>${label}</button>`).join('')+'</div><p class="hint">'+help+'</p>';
   }
   function renderPlayer(){
     if(!state)return;$('player-room').textContent=`SALA ${state.code}`;$('player-name-title').textContent=state.name||'Participante';
+    $('player-tools').innerHTML=playerLifelines();
+    $('player-tools').querySelectorAll('[data-player-lifeline]').forEach(button=>button.onclick=()=>run(async()=>{state=await api('lifeline',{code:state.code,token:playerToken(state.code),kind:button.dataset.playerLifeline});}));
     if(state.status==='lobby')$('player-content').innerHTML='<div class="waiting"><div class="pulse">✦</div><h2>Ya estás dentro</h2><p>Mira la pantalla principal. El juego comenzará cuando el conductor esté listo.</p></div>';
     else if(state.status==='rules')$('player-content').innerHTML=rulesMarkup();
     else if(state.status==='finished')$('player-content').innerHTML=`<div class="waiting"><h2>Clasificación final</h2><p>¡Gracias por jugar!</p></div>${scoreboardMarkup(state,state.name)}`;
-    else{$('player-content').innerHTML=questionMarkup(state,true,'player')+playerLifelines()+(state.status==='reveal'?`<h3>Clasificación</h3>${scoreboardMarkup(state,state.name)}`:state.my_answer!==null?'<p class="expert-note">Respuesta enviada. Puedes cambiarla mientras la votación siga abierta.</p>':'<p class="hint">Toca una alternativa para votar.</p>');$('player-content').querySelectorAll('[data-answer]').forEach(button=>button.onclick=()=>submitAnswer(Number(button.dataset.answer)));$('player-content').querySelectorAll('[data-player-lifeline]').forEach(button=>button.onclick=()=>run(async()=>{state=await api('lifeline',{code:state.code,token:playerToken(state.code),kind:button.dataset.playerLifeline});}));}
+    else{$('player-content').innerHTML=questionMarkup(state,true,'player')+(state.status==='reveal'?`<h3>Clasificación</h3>${scoreboardMarkup(state,state.name)}`:state.my_answer!==null?'<p class="expert-note">Respuesta enviada. Puedes cambiarla mientras la votación siga abierta.</p>':'<p class="hint">Toca una alternativa para votar.</p>');$('player-content').querySelectorAll('[data-answer]').forEach(button=>button.onclick=()=>submitAnswer(Number(button.dataset.answer)));}
   }
   function renderPresentation(){
     $('presentation-code').textContent=state?.code??'------';
