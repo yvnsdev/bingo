@@ -18,9 +18,44 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
   let state=null,selectedRoom=null,view='entry',busy=false,polling=false,presenting=false,demoAdmin=false,adminUser=null,questions=[];
   const auth=online?createBingoAuth({url:SUPABASE_URL,key:API_KEY,onInvalid:()=>{adminUser=null;if(view==='admin')showView('entry');}}):null;
   const music=$('music'),volume=$('volume');
-  const tracks={main:'assets/main-theme.mp3',opening:'assets/opening.mp3',lets:'assets/lets-play.mp3',questions:'assets/questions-100-1000.mp3',correct:'assets/who-was-correct.mp3'};
+  const tracks={main:'assets/main-theme.mp3',opening:'assets/opening.mp3',lets:'assets/lets-play.mp3',questions:'assets/questions-100-1000.mp3',win:'assets/1000000-win.mp3',correct:'assets/who-was-correct.mp3'};
   let musicLock=null;
   const seenLifelines=new Set();
+  const dismissedLifelines=new Set(read('millionaire-dismissed-lifelines',[]));
+  let activeLifelineKey=null,activeLifelineQuestion=null;
+  const lifelineLabels={fifty:'50:50',call:'☎ Llamada a Monserrat',audience:'👥 Voz del público',expert:'⚛ Albert Einstein'};
+  function closeLifeline(){
+    if(activeLifelineKey){dismissedLifelines.add(activeLifelineKey);save('millionaire-dismissed-lifelines',[...dismissedLifelines]);}
+    activeLifelineKey=null;
+    $('lifeline-dialog').close();
+    syncLifelineDialog();
+  }
+  $('lifeline-close').onclick=closeLifeline;
+  $('lifeline-continue').onclick=closeLifeline;
+  $('lifeline-dialog').addEventListener('cancel',event=>{event.preventDefault();closeLifeline();});
+  function syncLifelineDialog(){
+    const dialog=$('lifeline-dialog'),questionKey=state?state.code+':'+state.index:null;
+    if(view!=='player'||state?.status!=='question'||!Array.isArray(state?.question?.options)){
+      activeLifelineKey=null;activeLifelineQuestion=null;dialog.close();return;
+    }
+    if(activeLifelineQuestion!==questionKey){activeLifelineKey=null;dialog.close();activeLifelineQuestion=questionKey;}
+    // Polling must not recreate an open modal or restart its animation.
+    if(dialog.open)return;
+    for(const kind of Object.keys(lifelineLabels)){
+      if(state.lifeline_at?.[kind]!==state.index)continue;
+      if(kind==='audience'&&!Array.isArray(state.distribution))continue;
+      if(kind==='expert'&&state.expert_answer==null)continue;
+      if(kind==='call'&&state.call_answer==null)continue;
+      const key=questionKey+':'+playerToken(state.code)+':'+kind;
+      if(dismissedLifelines.has(key))continue;
+      activeLifelineKey=key;
+      $('lifeline-title').textContent=lifelineLabels[kind];
+      const single={...state,lifeline_at:kind==='audience'?{audience:state.index}:{},expert_answer:kind==='expert'?state.expert_answer:null,call_answer:kind==='call'?state.call_answer:null};
+      $('lifeline-body').innerHTML=kind==='fifty'?'<div class="fifty-modal-icon" aria-hidden="true">50:50</div><p>Se eliminaron dos alternativas incorrectas. Elige entre las dos que quedan.</p>':lifelineMarkup(single,'modal');
+      dialog.showModal();
+      break;
+    }
+  }
   let soundVolume=Math.min(1,Math.max(0,Number(localStorage.getItem('millionaire-volume')??22)/100));
   const applyVolume=()=>{music.volume=soundVolume;volume.value=String(Math.round(soundVolume*100));volume.style.setProperty('--volume',`${volume.value}%`);$('volume-value').textContent=`${volume.value}%`;};
   const playMusic=()=>{if(soundVolume&&music.paused)music.play().catch(()=>{});};
@@ -29,6 +64,7 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
     music.dataset.track=id;music.src=source;music.loop=loop;music.onended=onended;music.load();playMusic();
   }
   function syncMusic(){
+    if(state?.status==='finished'&&view!=='entry'){musicLock=null;setTrack('win',tracks.win,false);return;}
     if(musicLock)return;
     if(!state||view==='entry'||state.status==='lobby'||state.status==='finished')setTrack('main',tracks.main,true);
     else if(state.status==='rules')setTrack('opening',tracks.opening,true);
@@ -52,6 +88,13 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
   function showView(next){view=next;$('entry-view').hidden=next!=='entry';$('admin-view').hidden=next!=='admin';$('player-view').hidden=next!=='player';document.body.classList.toggle('playing',next!=='entry');render();}
   function playerToken(code){return session.players[code]??null;}
   function saveSession(){save(sessionKey,session);}
+  let serverOffset=0;
+  function secondsLeft(){return state?.answer_deadline?Math.max(0,Math.ceil((Date.parse(state.answer_deadline)-Date.now()-serverOffset)/1000)):0;}
+  function updateQuestionClock(){
+    const remaining=secondsLeft();
+    document.querySelectorAll('[data-question-clock]').forEach(el=>{el.textContent=remaining?remaining+' s':'Tiempo terminado';el.classList.toggle('expired',remaining===0);});
+    if(state?.status==='question'&&remaining===0)document.querySelectorAll('#player-content [data-answer]').forEach(el=>el.disabled=true);
+  }
   async function api(action,payload={}){
     if(online){
       const hostActions=['rooms','create','show_rules','start','reveal','next','lifeline','questions','question_save','question_delete'].includes(action)||payload.as_host;
@@ -59,7 +102,7 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
       if(hostActions){const jwt=await auth.accessToken();if(!jwt)throw new Error('Inicia sesión como administrador.');headers.Authorization=`Bearer ${jwt}`;}
       else headers.Authorization=`Bearer ${API_KEY}`;
       const response=await fetch(`${SUPABASE_URL.replace(/\/$/,'')}/rest/v1/rpc/millionaire_api`,{method:'POST',headers,body:JSON.stringify({p_action:action,p_data:payload}),signal:AbortSignal.timeout(12000)});
-      const data=await response.json();if(!response.ok)throw new Error(data.message||'No se pudo conectar con la partida.');return data;
+      const data=await response.json();if(!response.ok)throw new Error(data.message||'No se pudo conectar con la partida.');if(data?.server_time)serverOffset=Date.parse(data.server_time)-Date.now();return data;
     }
     return demoApi(action,payload);
   }
@@ -68,7 +111,7 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
     const showResults=room.status==='reveal'||room.lifelineAt.audience===room.index;
     const audienceDist=q?[11,14,16,9].map((value,i)=>i===q.correct_index?61:value):null;
     const correctVoters=room.status==='reveal'&&q?room.players.filter(p=>answers[p.token]?.option===q.correct_index).map(p=>p.name):[];
-    return {code:room.code,title:room.title,status:room.status,index:room.index,total:room.questions.length,question:q&& !['lobby','rules','finished'].includes(room.status)?{id:q.id,text:q.text,options:q.options,correct_index:room.status==='reveal'?q.correct_index:null,expert_hint:room.status==='reveal'||room.lifelineAt.expert===room.index?q.expert_hint:null,difficulty:q.difficulty}:null,players:room.players.map(p=>({name:p.name,score:p.score})).sort((a,b)=>b.score-a.score),answer_count:Object.keys(answers).length,my_answer:answers[token]?.option??null,distribution:showResults?(room.status==='reveal'?dist:audienceDist):null,expert_answer:q&&room.lifelineAt.expert===room.index?q.correct_index:null,call_answer:q&&room.lifelineAt.call===room.index?q.correct_index:null,correct_voters:correctVoters,lifelines:room.lifelines,lifeline_at:room.lifelineAt,hidden:room.hidden,name:me?.name??null,as_host:asHost};
+    return {code:room.code,title:room.title,status:room.status,answer_deadline:room.answer_deadline,index:room.index,total:room.questions.length,question:q&& !['lobby','rules','finished'].includes(room.status)?{id:q.id,text:q.text,options:q.options,correct_index:room.status==='reveal'?q.correct_index:null,expert_hint:room.status==='reveal'||room.lifelineAt.expert===room.index?q.expert_hint:null,difficulty:q.difficulty}:null,players:room.players.map(p=>({name:p.name,score:p.score})).sort((a,b)=>b.score-a.score),answer_count:Object.keys(answers).length,my_answer:answers[token]?.option??null,distribution:showResults?(room.status==='reveal'?dist:audienceDist):null,expert_answer:q&&room.lifelineAt.expert===room.index?q.correct_index:null,call_answer:q&&room.lifelineAt.call===room.index?q.correct_index:null,correct_voters:correctVoters,lifelines:room.lifelines,lifeline_at:room.lifelineAt,hidden:room.hidden,name:me?.name??null,as_host:asHost};
   }
   function demoApi(action,payload){
     const rooms=read('millionaire-demo-rooms',{}),bank=read('millionaire-demo-questions',seedQuestions);
@@ -81,10 +124,10 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
     if(action==='lookup')return {code:room.code,title:room.title,status:room.status,open:room.status!=='finished'};
     if(action==='join'){let p=room.players.find(p=>p.token===payload.token);if(!p){if(room.status==='finished')throw new Error('La partida ya terminó.');p={token:payload.token,name:payload.name,score:0};room.players.push(p);}save('millionaire-demo-rooms',rooms);return demoState(room,payload.token);}
     if(action==='show_rules'){if(room.status!=='lobby')throw new Error('Las reglas ya fueron presentadas.');room.status='rules';}
-    if(action==='start'){if(room.status!=='rules')throw new Error('Primero presenta las reglas.');if(!room.questions.length)throw new Error('La sala no tiene preguntas.');room.status='question';room.index=0;}
-    if(action==='answer'){if(room.status!=='question')throw new Error('La votación está cerrada.');if(room.hidden.includes(Number(payload.option)))throw new Error('Esa alternativa fue eliminada.');room.answers[room.index]??={};room.answers[room.index][payload.token]={option:Number(payload.option)};}
+    if(action==='start'){if(room.status!=='rules')throw new Error('Primero presenta las reglas.');if(!room.questions.length)throw new Error('La sala no tiene preguntas.');room.status='question';room.answer_deadline=new Date(Date.now()+20000).toISOString();room.index=0;}
+    if(action==='answer'){if(!room.answer_deadline||Date.now()>=Date.parse(room.answer_deadline))throw new Error('Se termino el tiempo para responder.');if(room.status!=='question')throw new Error('La votación está cerrada.');if(room.hidden.includes(Number(payload.option)))throw new Error('Esa alternativa fue eliminada.');room.answers[room.index]??={};room.answers[room.index][payload.token]={option:Number(payload.option)};}
     if(action==='reveal'){if(room.status!=='question')throw new Error('La pregunta ya fue revelada.');room.status='reveal';const q=room.questions[room.index],answers=room.answers[room.index]??{};room.players.forEach(p=>{if(answers[p.token]?.option===q.correct_index)p.score+=1000;});}
-    if(action==='next'){if(room.status!=='reveal')throw new Error('Primero revela la respuesta.');if(room.index>=room.questions.length-1)room.status='finished';else{room.index++;room.status='question';room.hidden=[];}}
+    if(action==='next'){if(room.status!=='reveal')throw new Error('Primero revela la respuesta.');if(room.index>=room.questions.length-1)room.status='finished';else{room.index++;room.status='question';room.answer_deadline=new Date(Date.now()+20000).toISOString();room.hidden=[];}}
     if(action==='lifeline'){const kind=payload.kind;if(room.lifelines[kind])throw new Error('Ese comodín ya fue utilizado.');room.lifelines[kind]=true;room.lifelineAt[kind]=room.index;if(kind==='fifty'){const wrong=[0,1,2,3].filter(i=>i!==room.questions[room.index].correct_index);room.hidden=wrong.sort(()=>Math.random()-.5).slice(0,2);}}
     save('millionaire-demo-rooms',rooms);return demoState(room,payload.token,Boolean(payload.as_host));
   }
@@ -95,12 +138,14 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
   function scoreboardMarkup(s,me=''){const players=Array.isArray(s.players)?s.players:[];return `<div class="scoreboard">${players.map((p,i)=>`<div class="rank${p.name===me?' me':''}"><b>${i+1}</b><span>${esc(p.name)}</span><strong>${p.score} pts</strong></div>`).join('')}</div>`;}
   function rulesMarkup(){return `${emblemMarkup()}<div class="rules-screen"><span class="eyebrow">ANTES DE COMENZAR</span><h3 class="question-text">Reglas del juego</h3><div class="rules-grid"><article><b>01</b><strong>Responde desde tu celular</strong><p>Elige A, B, C o D mientras la votación esté abierta.</p></article><article><b>02</b><strong>Todos juegan</strong><p>Cada respuesta correcta suma 1.000 puntos a tu clasificación.</p></article><article><b>03</b><strong>Puedes cambiar tu voto</strong><p>Tu última elección queda registrada al revelar la respuesta.</p></article><article><b>04</b><strong>Cuatro comodines compartidos</strong><p>50:50 elimina dos alternativas; el público muestra su gráfico; Einstein y Monserrat indican su respuesta.</p></article></div></div>`;}
   const emblemMarkup=()=>'<img class="show-emblem game-emblem" src="assets/emblema-monserrat.png" alt="">';
-  function questionMarkup(s,interactive=false,scope='view'){if(!s.question||!Array.isArray(s.question.options))return `${emblemMarkup()}<div class="expert-note"><h3>No se pudo cargar la pregunta</h3><p>La sala contiene una pregunta que ya no está disponible. Crea una sala nueva desde el panel.</p></div>`;const players=Array.isArray(s.players)?s.players:[],winners=s.status==='reveal'?`<div class="correct-voters"><span class="eyebrow">RESPONDIERON CORRECTAMENTE</span><strong>${s.correct_voters?.length?s.correct_voters.map(esc).join(' · '):'Nadie esta vez'}</strong></div>`:'';return `${emblemMarkup()}<div class="question-meta"><span>Pregunta ${s.index+1} de ${s.total}</span><span>${s.answer_count} de ${players.length} respuestas</span></div><h3 class="question-text">${esc(s.question.text)}</h3>${answersMarkup(s,interactive)}${lifelineMarkup(s,scope)}${winners}`;}
+  function questionMarkup(s,interactive=false,scope='view'){if(!s.question||!Array.isArray(s.question.options))return `${emblemMarkup()}<div class="expert-note"><h3>No se pudo cargar la pregunta</h3><p>La sala contiene una pregunta que ya no está disponible. Crea una sala nueva desde el panel.</p></div>`;const players=Array.isArray(s.players)?s.players:[],winners=s.status==='reveal'?`<div class="correct-voters"><span class="eyebrow">RESPONDIERON CORRECTAMENTE</span><strong>${s.correct_voters?.length?s.correct_voters.map(esc).join(' · '):'Nadie esta vez'}</strong></div>`:'';return `${emblemMarkup()}<div class="question-meta"><span>Pregunta ${s.index+1} de ${s.total}</span><span>${s.answer_count} de ${players.length} respuestas</span>${s.status==='question'?'<strong class="question-clock" data-question-clock></strong>':''}</div><h3 class="question-text">${esc(s.question.text)}</h3>${answersMarkup(s,interactive)}${winners}`;}
   function render(){
-    if(view==='entry')return;
+    if(view==='entry'){syncLifelineDialog();return;}
     if(view==='admin')renderAdmin();else renderPlayer();
     if(presenting)renderPresentation();
     syncMusic();
+    syncLifelineDialog();
+    updateQuestionClock();
   }
   function renderAdmin(){
     $('admin-email').textContent=adminUser?.email??'Modo demostración';$('fullscreen').disabled=!state;
@@ -193,5 +238,6 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
     if(requested)$('code-form').requestSubmit();
   }
   restorePlayer();
+  setInterval(updateQuestionClock,200);
   setInterval(refresh,1500);
 })();

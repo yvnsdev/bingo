@@ -49,6 +49,7 @@ create table if not exists public.millionaire_answers (
 create index if not exists millionaire_rooms_owner_idx on public.millionaire_rooms(owner_id);
 create index if not exists millionaire_players_room_idx on public.millionaire_players(room_code);
 create index if not exists millionaire_answers_room_question_idx on public.millionaire_answers(room_code,question_index);
+alter table public.millionaire_rooms add column if not exists answer_deadline timestamptz;
 alter table public.millionaire_rooms add column if not exists lifeline_at jsonb not null default '{}'::jsonb;
 alter table public.millionaire_rooms drop constraint if exists millionaire_rooms_status_check;
 alter table public.millionaire_rooms add constraint millionaire_rooms_status_check check (status in ('lobby','rules','question','reveal','finished'));
@@ -162,8 +163,9 @@ begin
         join public.millionaire_questions mq on mq.id=u.id
       ) valid;
       if coalesce(cardinality(v_question_ids),0)=0 then raise exception 'Las preguntas de esta sala ya no están disponibles. Crea una sala nueva.'; end if;
-      update public.millionaire_rooms set status='question',question_index=0,question_ids=v_question_ids where code=v_code returning * into r;
+      update public.millionaire_rooms set status='question',answer_deadline=clock_timestamp()+interval '20 seconds',question_index=0,question_ids=v_question_ids where code=v_code returning * into r;
     elsif p_action='answer' then
+      if r.answer_deadline is null or clock_timestamp()>=r.answer_deadline then raise exception 'Se termino el tiempo para responder.'; end if;
       if r.status<>'question' then raise exception 'La votación está cerrada.'; end if;
       select * into p from public.millionaire_players where token=v_token and room_code=v_code;
       if not found then raise exception 'Primero debes unirte a la sala.'; end if;
@@ -179,7 +181,7 @@ begin
     elsif p_action='next' then
       if r.status<>'reveal' then raise exception 'Primero revela la respuesta.'; end if;
       if r.question_index>=cardinality(r.question_ids)-1 then update public.millionaire_rooms set status='finished' where code=v_code returning * into r;
-      else update public.millionaire_rooms set status='question',question_index=question_index+1,hidden_options='{}' where code=v_code returning * into r; end if;
+      else update public.millionaire_rooms set status='question',answer_deadline=clock_timestamp()+interval '20 seconds',question_index=question_index+1,hidden_options='{}' where code=v_code returning * into r; end if;
     elsif p_action='lifeline' then
       if r.status<>'question' then raise exception 'Los comodines se usan mientras la pregunta está abierta.'; end if;
       v_kind:=p_data->>'kind';if v_kind not in ('fifty','call','audience','expert') then raise exception 'Comodín no válido.'; end if;
@@ -218,7 +220,7 @@ begin
       else '[13,16,11,60]'::jsonb
     end;
   end if;
-  return jsonb_build_object('code',r.code,'title',r.title,'status',r.status,'index',r.question_index,'total',cardinality(r.question_ids),'question',v_question,
+  return jsonb_build_object('code',r.code,'title',r.title,'status',r.status,'index',r.question_index,'total',cardinality(r.question_ids),'question',v_question,'answer_deadline',r.answer_deadline,'server_time',clock_timestamp(),
     'players',coalesce((select jsonb_agg(jsonb_build_object('name',mp.name,'score',mp.score) order by mp.score desc,mp.created_at) from public.millionaire_players mp where mp.room_code=r.code),'[]'::jsonb),
     'answer_count',(select count(*) from public.millionaire_answers ma where ma.room_code=r.code and ma.question_index=r.question_index),
     'my_answer',v_my_answer,'distribution',v_distribution,

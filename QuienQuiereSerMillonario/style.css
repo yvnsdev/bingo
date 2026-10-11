@@ -65,3 +65,13 @@ img.game-emblem{width:120px;height:auto;margin:0 auto 18px}
 .question-item{grid-template-columns:minmax(0,1fr) auto auto auto}.question-actions{display:flex;gap:8px}.question-actions .secondary,.question-actions .danger{width:auto;margin:0;padding:9px 12px;font-size:11px}.question-actions .danger{background:#68253a}
 @media(max-width:700px){.game-brand{width:58px;height:58px}.question-item{grid-template-columns:1fr auto}.question-item>div:first-child{grid-column:1/-1}.question-actions{grid-column:1/-1}.question-actions button{flex:1}}
 .audience-chart i,.expert-card .expert-photo img,.call-status{animation:none}.lifeline-reveal .audience-chart i{animation:audience-rise 1s .18s cubic-bezier(.16,1,.3,1) both}.lifeline-reveal .expert-photo img{animation:einstein-focus 1.1s ease both}.lifeline-reveal .call-status{animation:call-connected .8s .65s both}.call-answer{opacity:1;transform:none}
+
+/* Keep eliminated options hidden between polling renders. */
+.answer.eliminated{visibility:hidden;opacity:0;pointer-events:none;animation:none;transition:none}
+.lifeline-dialog{width:min(680px,calc(100% - 24px));padding:28px 20px 20px;border-color:var(--gold)}
+.lifeline-dialog h2{padding-right:25px;color:var(--gold);font-size:22px}
+.lifeline-dialog .audience-card,.lifeline-dialog .expert-card,.lifeline-dialog .monserrat-call{margin:0;max-width:100%}
+.lifeline-dialog .close{min-width:44px;min-height:44px}
+.fifty-modal-icon{width:150px;margin:20px auto;padding:22px 12px;border:3px solid #fff;border-radius:50%;background:radial-gradient(ellipse,#302c8a,#08082d);text-align:center;font:bold 32px 'Outfit';color:var(--gold)}
+
+.question-clock{color:var(--gold);font-variant-numeric:tabular-nums;white-space:nowrap}.question-clock.expired{color:#ff8296}.question-meta{flex-wrap:wrap;gap:10px}
