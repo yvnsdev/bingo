@@ -302,9 +302,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     if(view!=='host'||alert?.status!=='pending'||lastClaimAlert===alert.id)return;
     lastClaimAlert=alert.id;stopAuto();cancelDrawAnimation();
     $('claim-alert-name').textContent=alert.name;
-    $('claim-alert-result').textContent='Revisa el carton y las bolillas sorteadas antes de decidir. El premio aun no se ha entregado.';
-    $('claim-review-card').replaceChildren();
-    for(const n of state.review_card??[]){const cell=document.createElement('span');cell.textContent=n||'LIBRE';cell.className=(!n||state.drawn.includes(n))?'review-drawn':'';$('claim-review-card').append(cell);}
+    $('claim-alert-result').textContent='Revisa las bolillas sorteadas antes de decidir. El premio aun no se ha entregado.';
     if(!$('claim-alert').open)$('claim-alert').showModal();
   }
   function accept(next, animate=true){
