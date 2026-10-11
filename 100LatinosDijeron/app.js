@@ -24,7 +24,30 @@
   async function api(action,payload={},admin=false){const headers={'Content-Type':'application/json',apikey:SUPABASE_ANON_KEY,Authorization:`Bearer ${SUPABASE_ANON_KEY}`};if(admin){const jwt=await auth.accessToken();if(!jwt&&!demoAdmin)throw new Error('Inicia sesión como administrador.');if(jwt)headers.Authorization=`Bearer ${jwt}`;}const response=await fetch(`${SUPABASE_URL}/rest/v1/rpc/latinos_api`,{method:'POST',headers,body:JSON.stringify({p_action:action,p_data:payload}),signal:AbortSignal.timeout(12000)});const data=await response.json();if(!response.ok)throw new Error(data.message||'No se pudo conectar con la base de datos.');return data;}
   async function loadPublicQuestions(){try{questions=await api('active_questions')}catch{questions=read()}fillQuestionSelect();}
 
-  function tone(kind){if(!sound||!soundVolume)return;audio??=new (window.AudioContext||window.webkitAudioContext)();const now=audio.currentTime,g=audio.createGain();g.connect(audio.destination);g.gain.setValueAtTime(.001,now);g.gain.exponentialRampToValueAtTime(Math.max(.001,.35*soundVolume),now+.02);g.gain.exponentialRampToValueAtTime(.001,now+(kind==='wrong'?.7:.45));const notes=kind==='wrong'?[145,105]:kind==='award'?[330,440,660]:[520,720,920];notes.forEach((freq,i)=>{const o=audio.createOscillator();o.type=kind==='wrong'?'sawtooth':'square';o.frequency.value=freq;o.connect(g);o.start(now+i*.09);o.stop(now+(kind==='wrong'?.7:.45));});}
+  function tone(kind){
+    if(!sound||!soundVolume)return;
+    audio??=new (window.AudioContext||window.webkitAudioContext)();
+    if(audio.state==='suspended')audio.resume().catch(()=>{});
+    const now=audio.currentTime;
+    if(kind==='reveal'){
+      // Two bright, decaying bell strikes: "ta-lán".
+      [[659.25,0,.22],[987.77,0,.12],[783.99,.16,.28],[1174.66,.16,.13]].forEach(([frequency,delay,level])=>{
+        const oscillator=audio.createOscillator(),gain=audio.createGain(),start=now+delay;
+        oscillator.type='sine';oscillator.frequency.value=frequency;
+        gain.gain.setValueAtTime(.001,start);gain.gain.exponentialRampToValueAtTime(Math.max(.001,level*soundVolume),start+.008);gain.gain.exponentialRampToValueAtTime(.001,start+1.05);
+        oscillator.connect(gain).connect(audio.destination);oscillator.start(start);oscillator.stop(start+1.08);
+      });
+      return;
+    }
+    const gain=audio.createGain(),notes=kind==='wrong'?[145,105]:[330,440,660],length=kind==='wrong'?.7:.45;
+    gain.connect(audio.destination);gain.gain.setValueAtTime(.001,now);gain.gain.exponentialRampToValueAtTime(Math.max(.001,.35*soundVolume),now+.02);gain.gain.exponentialRampToValueAtTime(.001,now+length);
+    notes.forEach((frequency,index)=>{const oscillator=audio.createOscillator();oscillator.type=kind==='wrong'?'sawtooth':'square';oscillator.frequency.value=frequency;oscillator.connect(gain);oscillator.start(now+index*.09);oscillator.stop(now+length)});
+  }
+  function showStrikeOverlay(){
+    const overlay=$('strike-overlay');
+    overlay.hidden=true;void overlay.offsetWidth;overlay.hidden=false;
+    clearTimeout(showStrikeOverlay.timer);showStrikeOverlay.timer=setTimeout(()=>overlay.hidden=true,780);
+  }
   function toast(text){$('toast').textContent=text;$('toast').hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('toast').hidden=true,2200)}
   function countTo(el,to){const from=Number(el.textContent)||0,start=performance.now(),duration=500;const frame=now=>{const p=Math.min(1,(now-start)/duration);el.textContent=Math.round(from+(to-from)*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(frame)};requestAnimationFrame(frame)}
   function updatePresenterQuestion(){if(!$('presenter-question'))return;const q=questions[current],locked=!adminUnlocked||!roomCode;$('presenter-question').textContent=locked?(roomCode?'El juego todavía no ha comenzado':'Selecciona o crea una sala'):q?.question??'No hay preguntas activas';$('presenter-answer-count').textContent=locked?(roomCode?'Pulsa “Iniciar juego” para preparar la primera pregunta.':'Cada sala mantiene su propio tablero, puntajes y preguntas usadas.'):q?`${q.answers.length} respuestas · ${q.answers.reduce((n,a)=>n+Number(a[1]),0)} puntos disponibles`:'Agrega o activa una pregunta en el banco.';$('random-question').disabled=locked;$('admin-start-game').disabled=locked||!q;$('admin-new-game').disabled=!roomCode;}
@@ -57,8 +80,7 @@
       if(strikes!==previousStrikes)$('strikes').innerHTML=Array.from({length:strikes},()=>'<span class="strike-chip">X</span>').join('');
     }
     if(strikes>previousStrikes&&document.body.classList.contains('board-mode')){
-      $('strike-overlay').hidden=false;tone('wrong');clearTimeout(hydrate.timer);
-      hydrate.timer=setTimeout(()=>$('strike-overlay').hidden=true,780);
+      showStrikeOverlay();tone('wrong');
     }
   }
   function restoreBoard(){try{const state=JSON.parse(localStorage.getItem(boardKey));if(state)hydrate(state)}catch{}}
@@ -67,7 +89,7 @@
   async function selectRoom(code){roomCode=String(code||'').toUpperCase();adminUnlocked=false;$('host-rooms').value=roomCode;$('room-code').value=roomCode;$('copy-room-link').disabled=!roomCode;$('board-room-code').textContent=`SALA ${roomCode||'------'}`;if(!roomCode){$('active-room-label').textContent='Crea o selecciona una sala para comenzar.';updatePresenterQuestion();return}const data=await api('room_state',{code:roomCode});if(data.state&&Object.keys(data.state).length)hydrate({...data.state,roomCode});else showIdleBoard();$('active-room-label').textContent=`${data.title} · Código ${roomCode}`;updatePresenterQuestion()}
   function startPolling(){clearInterval(pollTimer);pollTimer=setInterval(async()=>{if(!roomCode||!document.body.classList.contains('board-mode'))return;try{const data=await api('room_state',{code:roomCode});if(data.state)hydrate({...data.state,roomCode})}catch{}},1200)}
   function reveal(index){if(!questionLoaded)return;const q=questions[current],answer=q?.answers[index];if(!answer||revealed.has(index))return;revealed.add(index);roundScore+=Number(answer[1]);const slot=document.querySelector(`[data-slot="${index}"]`),control=document.querySelector(`[data-reveal="${index}"]`);requestAnimationFrame(()=>slot?.classList.add('revealed'));control?.classList.add('revealed');if(control)control.disabled=true;countTo($('round-score'),roundScore);tone('reveal');slot?.animate([{filter:'brightness(2.7)'},{filter:'brightness(1)'}],{duration:800,easing:'ease-out'});publish()}
-  function wrong(){if(!questionLoaded)return toast('Primero carga una pregunta en el tablero.');if(strikes>=3)return toast('Ya se marcaron tres errores.');strikes++;$('strikes').insertAdjacentHTML('beforeend','<span class="strike-chip">X</span>');tone('wrong');if(document.body.classList.contains('board-mode')){$('strike-overlay').hidden=false;clearTimeout(wrong.timer);wrong.timer=setTimeout(()=>$('strike-overlay').hidden=true,780)}publish()}
+  function wrong(){if(!questionLoaded)return toast('Primero carga una pregunta en el tablero.');if(strikes>=3)return toast('Ya se marcaron tres errores.');strikes++;$('strikes').insertAdjacentHTML('beforeend','<span class="strike-chip">X</span>');tone('wrong');if(document.body.classList.contains('board-mode'))showStrikeOverlay();publish()}
   function award(team){if(!questionLoaded)return toast('Primero carga una pregunta en el tablero.');if(!roundScore)return toast('Todavía no hay puntos en el pozo.');scores[team]+=roundScore;roundScore=0;countTo($(team?'score-b':'score-a'),scores[team]);$('round-score').textContent='0';tone('award');toast(`Puntos entregados a ${team?$('team-b-display').value:$('team-a-display').value}.`);publish()}
   function setQuestion(index,advance=false){const next=Math.max(0,Math.min(index,questions.length-1)),q=questions[next];if(usedQuestions.has(String(q?.id)))return toast('Esa pregunta ya fue usada en esta partida.');current=next;questionLoaded=false;if(advance)round++;if($('question-picker').open)$('question-picker').close();updatePresenterQuestion();toast('Pregunta seleccionada. Pulsa “Cargar en el tablero” cuando quieras mostrarla.')}
   function renderPicker(){ $('picker-list').innerHTML=questions.map((q,i)=>({q,i})).filter(x=>x.q.active!==false).map(({q,i})=>{const used=usedQuestions.has(String(q.id));return `<button data-pick="${i}" ${used?'disabled':''}><b>${i+1}.</b> ${esc(q.question)}${used?' · YA USADA':''}</button>`}).join('');$('picker-list').querySelectorAll('[data-pick]:not(:disabled)').forEach(b=>b.onclick=()=>setQuestion(Number(b.dataset.pick)));}
