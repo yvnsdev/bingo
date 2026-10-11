@@ -18,7 +18,7 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
   let state=null,selectedRoom=null,view='entry',busy=false,polling=false,presenting=false,demoAdmin=false,adminUser=null,questions=[];
   const auth=online?createBingoAuth({url:SUPABASE_URL,key:API_KEY,onInvalid:()=>{adminUser=null;if(view==='admin')showView('entry');}}):null;
   const music=$('music'),volume=$('volume');
-  const tracks={main:'assets/main-theme.mp3',opening:'assets/opening.mp3',lets:'assets/lets-play.mp3',questions:'assets/questions-100-1000.mp3',win:'assets/1000000-win.mp3',correct:'assets/who-was-correct.mp3'};
+  const tracks={main:'assets/main-theme-full.mp3',opening:'assets/opening.mp3',lets:'assets/lets-play.mp3',questions:'assets/questions-100-1000.mp3',win:'assets/1000000-win.mp3',correct:'assets/who-was-correct.mp3'};
   let musicLock=null;
   const seenLifelines=new Set();
   const dismissedLifelines=new Set(read('millionaire-dismissed-lifelines',[]));
