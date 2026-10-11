@@ -20,10 +20,20 @@ create table if not exists public.latinos_answers (
   unique(question_id,position)
 );
 
+create table if not exists public.latinos_rooms (
+  code text primary key check (code ~ '^[A-Z0-9]{6}$'),
+  title text not null check (char_length(title) between 1 and 60),
+  owner_id uuid not null references auth.users(id),
+  state jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create index if not exists latinos_answers_question_idx on public.latinos_answers(question_id,position);
 alter table public.latinos_questions enable row level security;
 alter table public.latinos_answers enable row level security;
-revoke all on public.latinos_questions,public.latinos_answers from anon,authenticated;
+alter table public.latinos_rooms enable row level security;
+revoke all on public.latinos_questions,public.latinos_answers,public.latinos_rooms from anon,authenticated;
 
 create or replace function public.latinos_api(p_action text,p_data jsonb default '{}'::jsonb)
 returns jsonb language plpgsql security definer set search_path='' as $$
@@ -32,15 +42,45 @@ declare
   v_id uuid;
   v_answer jsonb;
   v_position integer:=0;
+  v_code text:=upper(trim(p_data->>'code'));
+  v_room public.latinos_rooms%rowtype;
 begin
-  if p_action not in ('active_questions','questions','question_save','question_delete') then raise exception 'Operación no válida.'; end if;
-  if p_action<>'active_questions' and v_user is null then raise exception 'Inicia sesión como administrador.'; end if;
+  if p_action not in ('active_questions','questions','question_save','question_delete','rooms','room_create','room_state','room_update','lookup') then raise exception 'Operación no válida.'; end if;
+  if p_action in ('questions','question_save','question_delete','rooms','room_create','room_update') and v_user is null then raise exception 'Inicia sesión como administrador.'; end if;
 
   if p_action in ('active_questions','questions') then
     return coalesce((select jsonb_agg(jsonb_build_object(
       'id',q.id,'question',q.question,'active',q.active,
       'answers',coalesce((select jsonb_agg(jsonb_build_array(a.answer,a.points) order by a.position) from public.latinos_answers a where a.question_id=q.id),'[]'::jsonb)
     ) order by q.created_at desc) from public.latinos_questions q where p_action='questions' or q.active),'[]'::jsonb);
+  end if;
+
+  if p_action='rooms' then
+    return coalesce((select jsonb_agg(jsonb_build_object('code',r.code,'title',r.title,'updated_at',r.updated_at) order by r.created_at desc) from public.latinos_rooms r where r.owner_id=v_user),'[]'::jsonb);
+  end if;
+
+  if p_action='room_create' then
+    if char_length(trim(p_data->>'title')) not between 1 and 60 then raise exception 'Escribe un nombre para la sala.'; end if;
+    loop
+      v_code:=upper(substr(replace(gen_random_uuid()::text,'-',''),1,6));
+      begin
+        insert into public.latinos_rooms(code,title,owner_id,state) values(v_code,trim(p_data->>'title'),v_user,coalesce(p_data->'state','{}'::jsonb)) returning * into v_room;
+        exit;
+      exception when unique_violation then null;
+      end;
+    end loop;
+    return jsonb_build_object('code',v_room.code,'title',v_room.title,'state',v_room.state);
+  end if;
+
+  if p_action in ('lookup','room_state','room_update') then
+    select * into v_room from public.latinos_rooms where code=v_code for update;
+    if not found then raise exception 'No encontramos esa sala. Revisa el código.'; end if;
+    if p_action='lookup' then return jsonb_build_object('code',v_room.code,'title',v_room.title); end if;
+    if p_action='room_update' then
+      if v_room.owner_id<>v_user then raise exception 'Solo quien creó la sala puede controlar este tablero.'; end if;
+      update public.latinos_rooms set state=coalesce(p_data->'state','{}'::jsonb),updated_at=now() where code=v_code returning * into v_room;
+    end if;
+    return jsonb_build_object('code',v_room.code,'title',v_room.title,'state',v_room.state,'updated_at',v_room.updated_at);
   end if;
 
   if p_action='question_save' then
