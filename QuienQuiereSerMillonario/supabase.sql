@@ -73,6 +73,7 @@ declare
   v_correct integer;
   v_kind text;
   v_hidden integer[];
+  v_question_ids uuid[];
   v_distribution jsonb;
   v_question jsonb;
   v_my_answer integer;
@@ -133,7 +134,7 @@ begin
   elsif p_action='lookup' then
     select * into r from public.millionaire_rooms where code=v_code;
     if not found then raise exception 'No encontramos esa sala. Revisa el código.'; end if;
-    return jsonb_build_object('code',r.code,'title',r.title,'open',r.status='lobby');
+    return jsonb_build_object('code',r.code,'title',r.title,'status',r.status,'open',r.status<>'finished');
   else
     select * into r from public.millionaire_rooms where code=v_code for update;
     if not found then raise exception 'No encontramos esa sala. Revisa el código.'; end if;
@@ -143,7 +144,7 @@ begin
       if v_token is null then raise exception 'Falta la identificación del participante.'; end if;
       select * into p from public.millionaire_players where token=v_token and room_code=v_code;
       if not found then
-        if r.status<>'lobby' then raise exception 'La partida ya comenzó.'; end if;
+        if r.status='finished' then raise exception 'La partida ya terminó.'; end if;
         if char_length(trim(p_data->>'name')) not between 1 and 30 then raise exception 'Escribe un nombre de hasta 30 caracteres.'; end if;
         if (select count(*) from public.millionaire_players where room_code=v_code)>=300 then raise exception 'La sala está llena.'; end if;
         insert into public.millionaire_players(token,room_code,name) values(v_token,v_code,trim(p_data->>'name')) returning * into p;
@@ -154,7 +155,14 @@ begin
       update public.millionaire_rooms set status='rules' where code=v_code returning * into r;
     elsif p_action='start' then
       if r.status<>'rules' then raise exception 'Primero presenta las reglas.'; end if;
-      update public.millionaire_rooms set status='question',question_index=0 where code=v_code returning * into r;
+      select array_agg(valid.id order by valid.ord) into v_question_ids
+      from (
+        select mq.id,u.ord
+        from unnest(r.question_ids) with ordinality as u(id,ord)
+        join public.millionaire_questions mq on mq.id=u.id
+      ) valid;
+      if coalesce(cardinality(v_question_ids),0)=0 then raise exception 'Las preguntas de esta sala ya no están disponibles. Crea una sala nueva.'; end if;
+      update public.millionaire_rooms set status='question',question_index=0,question_ids=v_question_ids where code=v_code returning * into r;
     elsif p_action='answer' then
       if r.status<>'question' then raise exception 'La votación está cerrada.'; end if;
       select * into p from public.millionaire_players where token=v_token and room_code=v_code;
@@ -193,17 +201,29 @@ begin
 
   if r.status not in ('lobby','rules','finished') then
     select * into q from public.millionaire_questions where id=r.question_ids[r.question_index+1];
+    if not found then raise exception 'La pregunta actual ya no está disponible. Crea una sala nueva.'; end if;
     v_question:=jsonb_build_object('id',q.id,'text',q.text,'options',to_jsonb(q.options),'difficulty',q.difficulty,
       'correct_index',case when r.status='reveal' then q.correct_index else null end,
       'expert_hint',case when r.status='reveal' or (r.lifeline_at->>'expert')::integer=r.question_index then q.expert_hint else null end);
   end if;
   select option_index into v_my_answer from public.millionaire_answers where room_code=r.code and question_index=r.question_index and player_token=v_token;
   v_show_distribution:=r.status='reveal' or (r.lifeline_at->>'audience')::integer=r.question_index;
-  if v_show_distribution then select jsonb_build_array(count(*) filter(where option_index=0),count(*) filter(where option_index=1),count(*) filter(where option_index=2),count(*) filter(where option_index=3)) into v_distribution from public.millionaire_answers where room_code=r.code and question_index=r.question_index; end if;
+  if r.status='reveal' then
+    select jsonb_build_array(count(*) filter(where option_index=0),count(*) filter(where option_index=1),count(*) filter(where option_index=2),count(*) filter(where option_index=3)) into v_distribution from public.millionaire_answers where room_code=r.code and question_index=r.question_index;
+  elsif (r.lifeline_at->>'audience')::integer=r.question_index then
+    v_distribution:=case q.correct_index
+      when 0 then '[61,14,16,9]'::jsonb
+      when 1 then '[11,64,16,9]'::jsonb
+      when 2 then '[12,15,63,10]'::jsonb
+      else '[13,16,11,60]'::jsonb
+    end;
+  end if;
   return jsonb_build_object('code',r.code,'title',r.title,'status',r.status,'index',r.question_index,'total',cardinality(r.question_ids),'question',v_question,
     'players',coalesce((select jsonb_agg(jsonb_build_object('name',mp.name,'score',mp.score) order by mp.score desc,mp.created_at) from public.millionaire_players mp where mp.room_code=r.code),'[]'::jsonb),
     'answer_count',(select count(*) from public.millionaire_answers ma where ma.room_code=r.code and ma.question_index=r.question_index),
     'my_answer',v_my_answer,'distribution',v_distribution,
+    'expert_answer',case when (r.lifeline_at->>'expert')::integer=r.question_index then q.correct_index else null end,
+    'call_answer',case when (r.lifeline_at->>'call')::integer=r.question_index then q.correct_index else null end,
     'correct_voters',case when r.status='reveal' then coalesce((select jsonb_agg(mp.name order by mp.created_at) from public.millionaire_players mp join public.millionaire_answers ma on ma.player_token=mp.token and ma.room_code=r.code and ma.question_index=r.question_index where mp.room_code=r.code and ma.option_index=q.correct_index),'[]'::jsonb) else '[]'::jsonb end,
     'lifelines',r.lifelines,'lifeline_at',r.lifeline_at,'hidden',to_jsonb(r.hidden_options),'name',p.name,'as_host',v_is_host);
 end;
