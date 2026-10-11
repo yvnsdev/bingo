@@ -53,11 +53,11 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
   const token = () => { const a = crypto.getRandomValues(new Uint8Array(16)); a[6] = (a[6] & 15) | 64; a[8] = (a[8] & 63) | 128; return [...a].map((v,i) => ([4,6,8,10].includes(i) ? '-' : '') + v.toString(16).padStart(2,'0')).join(''); };
   function card() { const columns = Array.from({length:5}, (_,c) => { const pool = Array.from({length:15}, (_,i) => c*15+i+1); return Array.from({length:5}, () => pool.splice(randomIndex(pool.length),1)[0]).sort((a,b)=>a-b); }); return Array.from({length:25},(_,i)=> i===12 ? 0 : columns[i%5][Math.floor(i/5)]); }
   function notify(message) { $('toast').textContent = message; $('toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(()=> $('toast').hidden = true, 4500); }
-  function snapshot(room, playerToken) { game.normalize(room); return {code:room.code,title:room.title,drawn:room.drawn,round:room.round,stages:room.stages,stage:room.stage,awards:room.awards,winner:room.winner?`${room.round}:${room.stage}`:null,players:room.players.map(p=>({name:p.name,winner:p.token===room.winner})),card:room.players.find(p=>p.token===playerToken)?.card ?? null,name:room.players.find(p=>p.token===playerToken)?.name ?? null}; }
+  function snapshot(room, playerToken) { game.normalize(room); return {code:room.code,title:room.title,drawn:room.drawn,claim_alert:room.claim_alert,review_card:playerToken===room.host?room.players.find(p=>p.token===room.claim_token)?.card:null,round:room.round,stages:room.stages,stage:room.stage,awards:room.awards,winner:room.winner?`${room.round}:${room.stage}`:null,players:room.players.map(p=>({name:p.name,winner:p.token===room.winner})),card:room.players.find(p=>p.token===playerToken)?.card ?? null,name:room.players.find(p=>p.token===playerToken)?.name ?? null}; }
   async function api(action, payload = {}) {
     if (online) {
       const headers = {'Content-Type':'application/json',apikey:SUPABASE_ANON_KEY};
-      const hostAction=['create','rooms','adopt','draw','advance','restart','configure'].includes(action)||payload.as_host;
+      const hostAction=['create','rooms','adopt','draw','approve_claim','reject_claim','advance','restart','configure'].includes(action)||payload.as_host;
       const ownerAtStart=hostAction?auth.session()?.user?.id:null;
       if(hostAction){const jwt=await auth.accessToken();if(!jwt)throw new Error('Inicia sesión como organizador.');headers.Authorization=`Bearer ${jwt}`;}
       else if (SUPABASE_ANON_KEY.startsWith('eyJ')) headers.Authorization = `Bearer ${SUPABASE_ANON_KEY}`;
@@ -69,7 +69,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     const rooms = read('bingo-demo-rooms', {});
     if(action==='rooms')return Object.values(rooms).filter(r=>r.host===session.hostToken).map(r=>({code:r.code,title:r.title}));
     if(action==='lookup'){const found=rooms[payload.code];if(!found)throw new Error('No encontramos esa sala. Revisa el código.');return {code:found.code,title:found.title,open:found.drawn.length===0};}
-    if(['create','draw','advance','restart','configure'].includes(action)&&!demoHost)throw new Error('Abre el panel de demostración.');
+    if(['create','draw','approve_claim','reject_claim','advance','restart','configure'].includes(action)&&!demoHost)throw new Error('Abre el panel de demostración.');
     if (action === 'create') { if(!game.validStages(payload.stages)) throw new Error('Selecciona un estilo de juego válido.'); let code; const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; do { code = Array.from({length:6},()=> alphabet[randomIndex(alphabet.length)]).join(''); } while (rooms[code]); rooms[code] = {code,title:payload.title,host:payload.token,drawn:[],players:[],winner:null,round:1,stage:0,stages:payload.stages,awards:[]}; save('bingo-demo-rooms',rooms); return snapshot(rooms[code]); }
     const room = rooms[payload.code]; if (!room) throw new Error('No encontramos esa sala. Revisa el código.');
     game.mutate(room, action, payload, card, randomIndex);
@@ -77,7 +77,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
   }
   const currentCode = () => view === 'host' ? session.hostCode : view==='player' ? session.playerCode : null;
   const currentToken = () => view === 'host' ? session.hostToken : session.playerToken;
-  function setView(next) { if(next==='host'&&!canHost()){openLogin();return;}if(presenting)leavePresentation();stopAuto(); revision++;cancelDrawAnimation();view=next; state=null; lastSeen=0;render(); refresh(); }
+  function setView(next) { if(next==='host'&&!canHost()){openLogin();return;}if(presenting)leavePresentation();$('claim-alert').close();stopAuto(); revision++;cancelDrawAnimation();view=next; state=null; lastSeen=0;render(); refresh(); }
   function renderPresentation(){
     if(!presenting)return;
     const drawn=visibleDrawn(),latest=visibleBall();
@@ -170,6 +170,8 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     $(target).replaceChildren();
     for(const award of state?.awards ?? []) {const el=document.createElement('span');el.className='award';el.textContent=`🏆 ${game.patterns[award.pattern]?.name ?? award.pattern}: ${award.name}`;$(target).append(el);}
   }
+  function marksKey(){return 'bingo-marks:'+state.code+':'+session.playerToken+':'+state.round;}
+  function manualMarks(){return state?.card?read(marksKey(),[]):[];}
   function renderRound() {
     const pattern=game.patterns[activePattern()];
     $('round-label').textContent=state?`RONDA ${state.round} · SALA ${state.code}`:'UNA SALA, TODAS LAS RONDAS';
@@ -184,10 +186,10 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     if(state?.card){
       $('player-round').textContent=`RONDA ${state.round} · PREMIO ${state.stage+1} DE ${state.stages.length}`;
       $('player-stage-title').textContent=pattern.name;$('claim-rule').textContent=pattern.description;
-      const ready=game.matches(state.card,visibleDrawn(),activePattern());
+      const ready=game.matches(state.card,manualMarks(),activePattern());
       $('claim').textContent=state.winner?'Premio entregado ✓':`${pattern.button} ✦`;
       $('claim').classList.toggle('ready',ready&&!state.winner);
-      $('claim-status').textContent=state.winner?(hasNext()?'Espera al anfitrión para continuar al cartón completo.':'Ronda terminada. Tu cartón seguirá aquí cuando reinicien.'):(ready?'¡Lo tienes! Pulsa el botón para reclamar tu premio.':'Los números se marcan solos. Reclama cuando completes la figura.');
+      $('claim-status').textContent=state.claim_alert?.status==='pending'?'Reclamo pendiente: el organizador esta revisando el carton.':state.winner?(hasNext()?'Espera al anfitrión para continuar al cartón completo.':'Ronda terminada. Tu cartón seguirá aquí cuando reinicien.'):(ready?'¡Lo tienes! Pulsa el botón para reclamar tu premio.':'Toca los numeros de tu carton para marcarlos. Reclama cuando completes la figura.');
     }
   }
   function render() {
@@ -212,17 +214,20 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     if(!players.length){const p=document.createElement('p');p.textContent='Falta lo mejor: tu gente.';$('people').append(p);}
     players.forEach(p=>{const el=document.createElement('div');el.className=`person${p.winner?' winner':''}`;const a=document.createElement('span');a.className='avatar';a.textContent=p.name.slice(0,1).toUpperCase();el.append(a,document.createTextNode(p.name+(p.winner?' · ¡BINGO! 🏆':'')));$('people').append(el);});
     const hasCard=view==='player' && Boolean(state?.card); $('join-panel').hidden=hasCard; $('card-panel').hidden=!hasCard;
-    if(hasCard){$('card-room').textContent=`SALA ${state.code} · ${state.title}`;$('card-name').textContent=`¡Vamos, ${state.name}!`;$('player-card').replaceChildren();state.card.forEach(n=>{const el=document.createElement('div');el.className=`card-cell${!n||drawn.includes(n)?' marked':''}${!n?' free':''}`;el.textContent=n||'✦';el.setAttribute('aria-label',n?`${n}${drawn.includes(n)?', marcado':''}`:'Centro libre');$('player-card').append(el);});const count=state.card.filter(n=>n&&drawn.includes(n)).length;$('card-progress').textContent=`${count} de 24 números marcados`;$('claim').disabled=busy||Boolean(drawAnimation)||Boolean(state.winner);}
+    if(hasCard){$('card-room').textContent=`SALA ${state.code} · ${state.title}`;$('card-name').textContent=`¡Vamos, ${state.name}!`;$('player-card').replaceChildren();const marks=manualMarks();state.card.forEach(n=>{const el=document.createElement('button');el.type='button';el.disabled=!n;el.setAttribute('aria-pressed',String(!n||marks.includes(n)));el.onclick=()=>{const updated=manualMarks();save(marksKey(),updated.includes(n)?updated.filter(x=>x!==n):[...updated,n]);render();};el.className=`card-cell${!n||marks.includes(n)?' marked':''}${!n?' free':''}`;el.textContent=n||'✦';el.setAttribute('aria-label',n?`${n}${marks.includes(n)?', marcado':''}`:'Centro libre');$('player-card').append(el);});const count=state.card.filter(n=>n&&marks.includes(n)).length;$('card-progress').textContent=`${count} de 24 números marcados`;$('claim').disabled=busy||Boolean(drawAnimation)||Boolean(state.winner)||state.claim_alert?.status==='pending';}
     $('player-latest').textContent=drawAnimation?.phase==='spin'?`Sorteando… ${letter(latest)} · ${latest}`:latest?`Última bolilla: ${letter(latest)} · ${latest}`:'Esperando la primera bolilla…';
+    $('review-claim').hidden=view!=='host'||state?.claim_alert?.status!=='pending';
+    $('claim-approve').disabled=busy;$('claim-reject').disabled=busy;
     renderRound();
     renderPresentation();
   }
   function showNumber(n) {
+    if(view!=='host'){cancelDrawAnimation();render();return;}
     clearTimeout(spinTimer);spinTimer=null;
     const animation=drawAnimation??{previous:state.drawn.slice(0,-1)};
     drawAnimation=animation;animation.phase='reveal';animation.number=n;animation.candidate=n;
     $('reveal-letter').textContent=letter(n);$('reveal-number').textContent=n;$('reveal').hidden=false;$('reveal-close').focus();
-    if(sound&&'speechSynthesis' in window){speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(`${letter(n)}. ${n}`);utterance.lang='es-CL';utterance.volume=soundVolume;speechSynthesis.speak(utterance);}
+    if(sound&&'speechSynthesis' in window){speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(`Letra ${letter(n)}. Numero ${n}.`);const voices=speechSynthesis.getVoices().filter(v=>/^es([_-]|$)/i.test(v.lang));const score=v=>(/natural|neural|online|google/i.test(v.name)?10:0)+(/es-(CL|MX|ES)/i.test(v.lang)?3:0);voices.sort((a,b)=>score(b)-score(a));if(voices[0])utterance.voice=voices[0];utterance.lang=voices[0]?.lang||'es-CL';utterance.rate=.88;utterance.pitch=1;utterance.volume=soundVolume;speechSynthesis.speak(utterance);}
     render();
   }
   function prepareWheelBrake(){
@@ -286,6 +291,22 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     showNumber(number);
   }
   function confetti(){for(let i=0;i<55;i++){const el=document.createElement('i');el.className='celebration';el.style.left=`${randomIndex(100)}%`;el.style.background=['#ee715b','#bba2d3','#e7c267','#83a58d'][i%4];el.style.animationDelay=`${Math.random()*.6}s`;document.body.append(el);setTimeout(()=>el.remove(),4000);}}
+  let lastClaimAlert=null;
+  $('claim-alert-close').onclick=()=>$('claim-alert').close();
+  for(const [id,action] of [['claim-approve','approve_claim'],['claim-reject','reject_claim']])$(id).onclick=()=>execute(async()=>{
+    const next=await api(action,{code:state.code,token:currentToken(),as_host:true,claim_id:state.claim_alert.id,...context()});
+    $('claim-alert').close();accept(next,false);
+  });
+  $('review-claim').onclick=()=>{lastClaimAlert=null;showClaimAlert(state?.claim_alert);};
+  function showClaimAlert(alert){
+    if(view!=='host'||alert?.status!=='pending'||lastClaimAlert===alert.id)return;
+    lastClaimAlert=alert.id;stopAuto();cancelDrawAnimation();
+    $('claim-alert-name').textContent=alert.name;
+    $('claim-alert-result').textContent='Revisa el carton y las bolillas sorteadas antes de decidir. El premio aun no se ha entregado.';
+    $('claim-review-card').replaceChildren();
+    for(const n of state.review_card??[]){const cell=document.createElement('span');cell.textContent=n||'LIBRE';cell.className=(!n||state.drawn.includes(n))?'review-drawn':'';$('claim-review-card').append(cell);}
+    if(!$('claim-alert').open)$('claim-alert').showModal();
+  }
   function accept(next, animate=true){
     const previous=state;
     const restarted=previous&&next.round!==previous.round;
@@ -295,15 +316,16 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     state=next;lastSeen=next.drawn.length;
     if(restarted||transitioned||next.winner){stopAuto();cancelDrawAnimation();if('speechSynthesis' in window)speechSynthesis.cancel();}
     if(restarted){render();notify(`¡Ronda ${next.round}! Conservas tu cartón; empezamos de nuevo.`);}
-    else if(animate&&newNumber&&!next.winner)showNumber(next.drawn.at(-1));else if($('reveal').hidden)render();
+    else if(view==='host'&&animate&&newNumber&&!next.winner)showNumber(next.drawn.at(-1));else if($('reveal').hidden)render();
     if(transitioned&&!restarted)notify(`Ahora jugamos por ${game.patterns[activePattern()].name.toLowerCase()}.`);
+    showClaimAlert(next.claim_alert);
     if(won){stopAuto();confetti();notify(`¡${game.patterns[activePattern()].name}! Ganó ${next.players.find(p=>p.winner)?.name ?? 'un jugador'}.`);}
   }
   async function refresh(){if(!currentCode()||pollBusy||busy)return;pollBusy=true;const code=currentCode(), selectedView=view, startedRevision=revision;try{const next=await api('state',{code,token:currentToken(),as_host:view==='host'});if(code===currentCode()&&view===selectedView&&startedRevision===revision){accept(next,Boolean(state));$('connection').textContent=online?'● Sala conectada · actualiza cada 2 s':'● Modo demo · en este navegador';}}catch(error){$('connection').textContent='● No se pudo actualizar · reintentando';}finally{pollBusy=false;}}
   async function execute(fn){if(busy)return;busy=true;revision++;render();let failed=false;try{await fn();}catch(error){failed=true;cancelDrawAnimation();if(presenting)await leavePresentation();notify(error.message || 'Ocurrió un problema. Inténtalo otra vez.');stopAuto();}finally{busy=false;if($('reveal').hidden)render();if(failed)refresh();}}
   function stopAuto(){clearTimeout(autoTimer);autoTimer=null;$('auto').textContent='▷ Automático';}
   async function draw(){
-    if(busy||drawAnimation?.phase==='reveal')return;
+    if(busy||state?.claim_alert?.status==='pending'||drawAnimation?.phase==='reveal')return;
     if(!session.hostCode){$('create-dialog').showModal();return;}if(!state)return;
     if(!drawAnimation){startDrawSimulation();return;}
     const simulation=drawAnimation;
@@ -326,10 +348,11 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
   $('code-form').onsubmit=e=>{e.preventDefault();execute(()=>findRoom($('room-code').value.trim().toUpperCase()));};
   $('change-code').onclick=resetEntry;$('leave-room').onclick=resetEntry;
   $('join-form').onsubmit=e=>{e.preventDefault();const name=$('player-name').value.trim(),code=selectedRoom?.code;if(!name||!code)return;execute(async()=>{const playerToken=session.players[code]??token();session.players[code]=playerToken;save(sessionKey,session);const next=await api('join',{name,code,token:playerToken});session.playerToken=playerToken;session.playerCode=code;save(sessionKey,session);view='player';state=null;accept(next,false);if(location.protocol!=='file:')history.replaceState(null,'',game.invitation(location.href,code));notify('¡Ya tienes tu cartón! Que empiece la partida.');});};
-  $('claim').onclick=()=>execute(async()=>accept(await api('claim',{code:session.playerCode,token:session.playerToken,...context()}),false));
+  $('claim').onclick=()=>execute(async()=>{const next=await api('claim',{code:session.playerCode,token:session.playerToken,...context()});accept(next,false);notify('Reclamo enviado. Espera la revision del organizador.');});
   function openRound(action){
     if(!state)return;stopAuto();roundAction=action;roundDialogContext={code:session.hostCode,token:session.hostToken,...context()};
     $('round-style').value=Object.keys(game.presets).find(key=>JSON.stringify(game.presets[key])===JSON.stringify(state.stages))??'full';
+    if(!$('round-style').value)$('round-style').value='line_B_full';
     $('round-dialog-title').textContent=action==='restart'?'Reiniciar la ronda':'Estilo de juego';
     $('round-dialog-description').textContent=action==='restart'?'Se borrarán las bolillas y los premios de esta ronda. Todos conservan su cartón, su nombre y el mismo enlace. Nadie tiene que volver a entrar.':'Elige qué premios se jugarán, en orden. Puedes cambiar el estilo antes de sacar la primera bolilla.';
     $('round-submit').textContent=action==='restart'?'Reiniciar y conservar cartones ↻':'Guardar estilo de juego';$('round-dialog').showModal();
@@ -358,6 +381,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
   document.addEventListener('fullscreenchange',()=>{if(document.fullscreenElement===document.documentElement&&presenting)nativePresentation=true;else if(nativePresentation)closePresentation();});
   document.addEventListener('keydown',event=>{
     playBackgroundMusic();
+    if(document.querySelector('dialog[open]'))return;
     if(!presenting||event.repeat||event.ctrlKey||event.metaKey||event.altKey)return;
     if(event.key==='Escape'){event.preventDefault();leavePresentation();return;}
     if(event.code==='Space'){event.preventDefault();if(!busy&&!state?.winner&&state?.drawn.length<75)draw();}

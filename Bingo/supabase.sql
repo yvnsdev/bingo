@@ -23,6 +23,8 @@ alter table public.bingo_rooms add column if not exists stages text[] not null d
 alter table public.bingo_rooms add column if not exists stage_index integer not null default 0;
 alter table public.bingo_rooms add column if not exists awards jsonb not null default '[]'::jsonb;
 alter table public.bingo_rooms add column if not exists owner_id uuid references auth.users(id);
+alter table public.bingo_rooms add column if not exists claim_alert jsonb;
+alter table public.bingo_rooms add column if not exists claim_token uuid;
 create index if not exists bingo_rooms_owner_idx on public.bingo_rooms(owner_id);
 alter table public.bingo_rooms enable row level security;
 alter table public.bingo_players enable row level security;
@@ -40,6 +42,10 @@ begin
   if p_pattern='full' then return not exists(select 1 from unnest(marked) m where not m); end if;
   if p_pattern='corners' then return marked[1] and marked[5] and marked[21] and marked[25]; end if;
   if p_pattern='x' then return marked[1] and marked[7] and marked[13] and marked[19] and marked[25] and marked[5] and marked[9] and marked[17] and marked[21]; end if;
+  if p_pattern in ('line_B','line_I','line_N','line_G','line_O') then
+    i:=strpos('BINGO',right(p_pattern,1));
+    return marked[i] and marked[i+5] and marked[i+10] and marked[i+15] and marked[i+20];
+  end if;
   if p_pattern='line' then
     for i in 0..4 loop
       if marked[i*5+1] and marked[i*5+2] and marked[i*5+3] and marked[i*5+4] and marked[i*5+5] then return true; end if;
@@ -67,14 +73,15 @@ declare
   v_stages text[];
   v_user uuid := auth.uid();
   v_host boolean := false;
+  v_valid boolean;
   c integer;
   j integer;
   n integer;
 begin
-  if p_action not in ('create','join','state','draw','claim','advance','restart','configure','lookup','rooms','adopt') or p_action is null then
+  if p_action not in ('create','join','state','draw','claim','approve_claim','reject_claim','advance','restart','configure','lookup','rooms','adopt') or p_action is null then
     raise exception 'Operación no válida.';
   end if;
-  if p_action in ('create','rooms','adopt','draw','advance','restart','configure') and v_user is null then
+  if p_action in ('create','rooms','adopt','draw','approve_claim','reject_claim','advance','restart','configure') and v_user is null then
     raise exception 'Inicia sesión como organizador.';
   end if;
   if p_action='rooms' then
@@ -89,7 +96,7 @@ begin
   if p_action in ('create','restart','configure') then
     if jsonb_typeof(p_data->'stages') is distinct from 'array' then raise exception 'Selecciona un estilo de juego válido.'; end if;
     select array_agg(value order by ord) into v_stages from jsonb_array_elements_text(p_data->'stages') with ordinality as s(value,ord);
-    if v_stages is null or not(v_stages=array['full'] or v_stages=array['line','full'] or v_stages=array['corners','full'] or v_stages=array['x','full']) then raise exception 'Selecciona un estilo de juego válido.'; end if;
+    if v_stages is null or not(v_stages=array['full'] or v_stages=array['line','full'] or (cardinality(v_stages)=2 and v_stages[1] in ('line_B','line_I','line_N','line_G','line_O') and v_stages[2]='full') or v_stages=array['corners','full'] or v_stages=array['x','full']) then raise exception 'Selecciona un estilo de juego válido.'; end if;
   end if;
   if p_action = 'create' then
     if v_title is null or char_length(v_title) not between 1 and 60 then raise exception 'Escribe un nombre de fiesta de hasta 60 caracteres.'; end if;
@@ -112,12 +119,12 @@ begin
       update public.bingo_rooms set owner_id=v_user,host_token=gen_random_uuid() where code=v_code returning * into r;
     end if;
     v_host := v_user is not null and r.owner_id=v_user;
-    if p_action in ('draw','claim','advance','restart','configure') then
+    if p_action in ('draw','claim','approve_claim','reject_claim','advance','restart','configure') then
       if (p_data->>'round')::integer is distinct from r.round_number or (p_data->>'stage')::integer is distinct from r.stage_index then
         raise exception 'La ronda o el premio cambió. Actualiza la sala y vuelve a intentarlo.';
       end if;
     end if;
-    if p_action in ('draw','advance','restart','configure') and not coalesce(v_host,false) then raise exception 'Solo el dueño de esta sala puede cambiar el sorteo.'; end if;
+    if p_action in ('draw','approve_claim','reject_claim','advance','restart','configure') and not coalesce(v_host,false) then raise exception 'Solo el dueño de esta sala puede cambiar el sorteo.'; end if;
     if p_action = 'join' then
       select * into p from public.bingo_players where token=v_token and room_code=v_code;
       if not found then
@@ -132,25 +139,32 @@ begin
         insert into public.bingo_players(token,room_code,name,card) values(v_token,v_code,v_name,v_card);
       end if;
     elsif p_action = 'draw' then
+      if r.claim_token is not null then raise exception 'Revisa el reclamo antes de seguir sorteando.'; end if;
       if r.winner is not null then raise exception 'Este premio ya tiene ganador. Continúa al siguiente o reinicia la ronda.'; end if;
       select g into n from generate_series(1,75) g where not (g=any(r.drawn)) order by random() limit 1;
       if n is null then raise exception 'Ya salieron todos los números.'; end if;
       update public.bingo_rooms set drawn=array_append(drawn,n) where code=v_code returning * into r;
     elsif p_action = 'claim' then
+      if r.claim_token is not null then raise exception 'Hay un reclamo en revision. Espera al organizador.'; end if;
       select * into p from public.bingo_players where token=v_token and room_code=v_code;
       if not found then raise exception 'Primero debes unirte a la sala.'; end if;
       if r.winner is not null then raise exception 'Este premio ya tiene un ganador.'; end if;
-      if not public.bingo_matches(p.card,r.drawn,r.stages[r.stage_index+1]) then raise exception '¡Casi! Todavía te faltan números para este premio.'; end if;
-      update public.bingo_rooms set winner=v_token,
-        awards=awards||jsonb_build_array(jsonb_build_object('name',p.name,'pattern',r.stages[r.stage_index+1],'stage',r.stage_index,'round',r.round_number))
-        where code=v_code returning * into r;
+      update public.bingo_rooms set claim_token=v_token,claim_alert=jsonb_build_object('id',gen_random_uuid(),'name',p.name,'status','pending','pattern',r.stages[r.stage_index+1],'round',r.round_number,'stage',r.stage_index) where code=v_code returning * into r;
+    elsif p_action in ('approve_claim','reject_claim') then
+      if r.claim_token is null or p_data->>'claim_id' is distinct from r.claim_alert->>'id' then raise exception 'Este reclamo ya cambio o fue revisado.'; end if;
+      if p_action='approve_claim' then
+        update public.bingo_rooms set winner=claim_token,claim_token=null,claim_alert=jsonb_set(claim_alert,'{status}','"approved"'),
+          awards=awards||jsonb_build_array(jsonb_build_object('name',r.claim_alert->>'name','pattern',r.stages[r.stage_index+1],'stage',r.stage_index,'round',r.round_number)) where code=v_code returning * into r;
+      else
+        update public.bingo_rooms set claim_token=null,claim_alert=jsonb_set(claim_alert,'{status}','"rejected"') where code=v_code returning * into r;
+      end if;
     elsif p_action = 'advance' then
       if r.winner is null or r.stage_index>=cardinality(r.stages)-1 then raise exception 'No hay un siguiente premio disponible.'; end if;
-      update public.bingo_rooms set stage_index=stage_index+1,winner=null where code=v_code returning * into r;
+      update public.bingo_rooms set stage_index=stage_index+1,winner=null,claim_alert=null,claim_token=null where code=v_code returning * into r;
     elsif p_action in ('restart','configure') then
       if p_action='configure' and (cardinality(r.drawn)>0 or r.winner is not null or jsonb_array_length(r.awards)>0) then raise exception 'Cambia el estilo al reiniciar la ronda.'; end if;
       -- Nunca borrar jugadores ni regenerar cartones al reiniciar.
-      update public.bingo_rooms set drawn='{}'::integer[],winner=null,stage_index=0,stages=v_stages,awards='[]'::jsonb,
+      update public.bingo_rooms set drawn='{}'::integer[],claim_alert=null,claim_token=null,winner=null,stage_index=0,stages=v_stages,awards='[]'::jsonb,
         round_number=round_number+case when p_action='restart' then 1 else 0 end
         where code=v_code returning * into r;
     end if;
@@ -161,11 +175,11 @@ begin
   end if;
   select * into p from public.bingo_players where room_code=v_code and token=v_token;
   return jsonb_build_object(
-    'code',r.code,'title',r.title,'drawn',to_jsonb(r.drawn),
+    'code',r.code,'title',r.title,'drawn',to_jsonb(r.drawn),'claim_alert',r.claim_alert,
     'round',r.round_number,'stages',to_jsonb(r.stages),'stage',r.stage_index,'awards',r.awards,
     'winner',case when r.winner is null then null else r.round_number::text||':'||r.stage_index::text end,
     'players',coalesce((select jsonb_agg(jsonb_build_object('name',bp.name,'winner',coalesce(bp.token=r.winner,false)) order by bp.created_at) from public.bingo_players bp where bp.room_code=v_code),'[]'::jsonb),
-    'card',to_jsonb(p.card),'name',p.name
+    'review_card',case when v_host and r.claim_token is not null then (select to_jsonb(bp.card) from public.bingo_players bp where bp.token=r.claim_token and bp.room_code=r.code) else null end,'card',to_jsonb(p.card),'name',p.name
   );
 end;
 $$;

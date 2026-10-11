@@ -285,3 +285,7 @@ body.entry-screen footer{margin-top:0}
 @media (prefers-reduced-motion: reduce) {
   .number.scanning { transform: none; }
 }
+
+.claim-alert{width:min(780px,94vw);padding:clamp(24px,5vw,60px);text-align:center;border:3px solid #e7c267;background:#09251c;color:#fff4d5;box-shadow:0 0 70px #e7c26777}.claim-alert::backdrop{background:#00140ee8}.claim-alert h2{font-size:clamp(32px,5vw,64px);color:#f5d578}.claim-alert>strong{display:block;font-size:clamp(28px,4vw,52px);overflow-wrap:anywhere}.claim-alert p{font-size:20px}.claim-alert button{margin-top:20px}
+
+#player-card button.card-cell{font:inherit;color:inherit;cursor:pointer}#player-card button.card-cell:disabled{opacity:1;cursor:default}.claim-review-card{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:20px auto;max-width:400px}.claim-review-card span{padding:10px;background:#183b30;border:1px solid #688679}.claim-review-card .review-drawn{background:#e7c267;color:#09251c}.review-claim{position:fixed;bottom:20px;right:20px;z-index:100}
