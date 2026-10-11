@@ -56,6 +56,14 @@ button:focus-visible, a:focus-visible { outline-color: var(--gold); }
 .occasion { color: #c3b88f; letter-spacing: 2.5px; }
 .icon-btn { color: var(--gold); background: #16372b; border-color: #b598554d; }
 .icon-btn:hover { background: #244c38; }
+.volume-control { display: flex; align-items: center; gap: 9px; margin: 0; padding: 9px 12px; border: 1px solid #b598554d; border-radius: 9px; background: #16372b; color: var(--gold); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.volume-control input { width: clamp(80px, 10vw, 135px); padding: 0; border: 0; background: transparent; accent-color: var(--gold); cursor: pointer; }
+.volume-control output { min-width: 32px; color: #f4e2b4; font-size: 11px; font-variant-numeric: tabular-nums; }
+@media (max-width: 540px) {
+  .volume-control { gap: 6px; padding: 7px 9px; }
+  .volume-control input { width: 72px; }
+  .volume-label, .volume-control output { display: none; }
+}
 h1 { font-weight: 600; text-shadow: 0 5px 25px #0003; }
 h1 i { color: #d6b777; }
 .eyebrow { color: #c5b17e; }
@@ -206,7 +214,10 @@ body.projecting #reveal { z-index: 120; }
 /* Borde de ruleta: casillas rojas/negras, cero verde y un indicador fijo. */
 .last-ball, .presentation-ball, .reveal-ball {
   /* Keep this on the element so --wheel-stop resolves before inheritance. */
-  --wheel-brake-distance: 490.2352941176deg;
+  --wheel-spin-duration: 1.2s;
+  --wheel-ramp-duration: .9s;
+  --wheel-ramp-distance: 135deg;
+  --wheel-brake-distance: 694.5deg;
   --wheel-rim: 15px;
   position: relative; isolation: isolate; border: 2px solid #e2c27a;
   padding: calc(var(--wheel-rim) + 7px);
@@ -231,13 +242,17 @@ body.projecting #reveal { z-index: 120; }
 }
 .last-ball > *, .presentation-ball > *, .reveal-ball > * { position: relative; z-index: 1; }
 .last-ball strong { font-size: 64px; }
-.last-ball.is-spinning::before, .presentation-ball.is-spinning::before, .reveal-ball.is-spinning::before { animation: roulette-turn 1.7s linear infinite; }
+.last-ball.is-spinning::before, .presentation-ball.is-spinning::before, .reveal-ball.is-spinning::before {
+  animation: roulette-start var(--wheel-ramp-duration) cubic-bezier(.3333333333,0,.6666666667,.3333333333) forwards,
+    roulette-turn var(--wheel-spin-duration) linear var(--wheel-ramp-duration) infinite;
+}
 .last-ball.is-slowing::before, .presentation-ball.is-slowing::before, .reveal-ball.is-slowing::before { animation: roulette-brake 4.63s cubic-bezier(.3333333333,.6666666667,.6666666667,1) forwards; }
 .last-ball.is-spinning strong, .presentation-ball.is-spinning strong { color: #5b3c18; }
 .number.scanning { background: #f5dea0; color: #172b1e; border-color: #fff8d9; box-shadow: 0 0 0 2px #e3be65, 0 0 24px #efcc7890; transform: scale(1.06); animation: candidate-glow .48s ease-in-out; transition: background .3s ease, color .3s ease, box-shadow .3s ease, transform .3s ease; }
 .number.latest:not(.scanning) { outline: 1px solid #f8df92; }
 .presentation-last:disabled { cursor: default; }
-@keyframes roulette-turn { from { transform: rotate(var(--wheel-stop, 0deg)); } to { transform: rotate(calc(var(--wheel-stop, 0deg) + 360deg)); } }
+@keyframes roulette-start { from { transform: rotate(var(--wheel-stop, 0deg)); } to { transform: rotate(calc(var(--wheel-stop, 0deg) + var(--wheel-ramp-distance))); } }
+@keyframes roulette-turn { from { transform: rotate(calc(var(--wheel-stop, 0deg) + var(--wheel-ramp-distance))); } to { transform: rotate(calc(var(--wheel-stop, 0deg) + var(--wheel-ramp-distance) + 360deg)); } }
 @keyframes roulette-brake { from { transform: rotate(var(--wheel-start, 0deg)); } to { transform: rotate(calc(var(--wheel-start, 0deg) + var(--wheel-brake-distance))); } }
 @keyframes candidate-glow { from { opacity: .45; transform: scale(.94); } 60% { opacity: 1; transform: scale(1.06); } to { opacity: .9; } }
 @media (prefers-reduced-motion: reduce) {

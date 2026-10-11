@@ -15,7 +15,22 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
   const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
   const save = (key, value) => localStorage.setItem(key, JSON.stringify(value));
   const sessionKey = online ? 'bingo-session-online' : 'bingo-session-demo';
-  let session = read(sessionKey, {}), state = null, busy = false, autoTimer = null, pollBusy = false, sound = false, lastSeen = 0, revealTimer, toastTimer, revision = 0;
+  let session = read(sessionKey, {}), state = null, busy = false, autoTimer = null, pollBusy = false, sound = true, lastSeen = 0, revealTimer, toastTimer, revision = 0;
+  const backgroundMusic=$('background-music');
+  const volumeControl=$('volume');
+  let soundVolume=Math.min(1,Math.max(0,Number(localStorage.getItem('bingo-volume')??25)/100));
+  function applyVolume(){
+    sound=soundVolume>0;
+    backgroundMusic.volume=soundVolume;
+    volumeControl.value=String(Math.round(soundVolume*100));
+    $('volume-value').textContent=`${volumeControl.value}%`;
+  }
+  applyVolume();
+  function playBackgroundMusic(){
+    if(!sound||typeof backgroundMusic.play!=='function')return;
+    // Browsers may require a click or key press before allowing audible playback.
+    if(backgroundMusic.paused)backgroundMusic.play().catch(()=>{});
+  }
   let view = 'entry', selectedRoom = null, hostUser = null, demoHost = false, hostRooms = [];
   let presenting = false, nativePresentation = false;
   let drawAnimation = null, spinTimer = null;
@@ -207,19 +222,26 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     const animation=drawAnimation??{previous:state.drawn.slice(0,-1)};
     drawAnimation=animation;animation.phase='reveal';animation.number=n;animation.candidate=n;
     $('reveal-letter').textContent=letter(n);$('reveal-number').textContent=n;$('reveal').hidden=false;$('reveal-close').focus();
-    if(sound&&'speechSynthesis' in window){speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(`${letter(n)}. ${n}`);utterance.lang='es-CL';speechSynthesis.speak(utterance);}
+    if(sound&&'speechSynthesis' in window){speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(`${letter(n)}. ${n}`);utterance.lang='es-CL';utterance.volume=soundVolume;speechSynthesis.speak(utterance);}
     render();
   }
   function prepareWheelBrake(){
     if(typeof getComputedStyle!=='function')return;
     for(const ball of [$('last-ball'),document.querySelector('.presentation-ball')]){
       if(!ball)continue;
-      const transform=getComputedStyle(ball,'::before').transform;
+      const wheelStyle=getComputedStyle(ball,'::before');
+      const transform=wheelStyle.transform;
       const values=transform.match(/^matrix\(([^)]+)\)$/)?.[1].split(',').map(Number);
       const matrix3d=transform.match(/^matrix3d\(([^)]+)\)$/)?.[1].split(',').map(Number);
       const cosine=values?.[0] ?? matrix3d?.[0];
       const sine=values?.[1] ?? matrix3d?.[1];
       if(!Number.isFinite(cosine)||!Number.isFinite(sine))continue;
+      // If stopped during startup, brake from the speed already reached.
+      const ramp=ball.getAnimations({subtree:true}).find(item=>item.animationName==='roulette-start');
+      const rampDuration=parseFloat(wheelStyle.getPropertyValue('--wheel-ramp-duration'))*1000;
+      const speed=360/parseFloat(wheelStyle.getPropertyValue('--wheel-spin-duration'));
+      const progress=ramp?Math.min(1,Math.max(0,Number(ramp.currentTime)/rampDuration)):1;
+      ball.style.setProperty('--wheel-brake-distance',`${speed*progress*4.63/2}deg`);
       ball.style.setProperty('--wheel-start',`${Math.atan2(sine,cosine)*180/Math.PI}deg`);
       ball.style.setProperty('--wheel-stop','calc(var(--wheel-start) + var(--wheel-brake-distance))');
     }
@@ -242,9 +264,9 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
       if(drawAnimation!==animation||animation.phase!=='spin')return;
       nextCandidate();
       animation.frame++;render();
-      spinTimer=setTimeout(tick,globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?300:100);
+      spinTimer=setTimeout(tick,globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?300:130);
     };
-    render();spinTimer=setTimeout(tick,100);
+    render();spinTimer=setTimeout(tick,130);
   }
   const wait = delay => new Promise(resolve=>setTimeout(resolve,delay));
   async function slowToResult(animation, number) {
@@ -252,7 +274,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     animation.phase='slowing';
     clearTimeout(spinTimer);spinTimer=null;
     const options=animation.pool.filter(value=>value!==number);
-    const delays=[120,150,190,240,300,380,470,580,700,850];
+    const delays=[130,140,190,240,300,380,470,580,700,850];
     for(const delay of delays){
       const available=options.filter(value=>value!==animation.candidate);
       animation.candidate=available.length?available[randomIndex(available.length)]:number;
@@ -319,7 +341,15 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
   $('invite').onclick=()=>{if(!session.hostCode){$('create-dialog').showModal();return;}$('share-code').textContent=session.hostCode;$('share-link').value=game.invitation(location.href,session.hostCode);$('share-note').textContent=online?'El mismo enlace sirve para todas las rondas. Comparte este enlace público con tus invitados.':'Demo local: el enlace solo funciona en este navegador. Configura Supabase y publica el sitio para jugar desde otros teléfonos.';$('invite-dialog').showModal();};
   $('copy').onclick=async()=>{try{await navigator.clipboard.writeText($('share-link').value);notify('¡Enlace copiado!');}catch{$('share-link').select();notify('Selecciona y copia el enlace de la invitación.');}};
   document.querySelectorAll('[data-close]').forEach(btn=>btn.onclick=()=>$(btn.dataset.close).close());
-  $('sound').onclick=()=>{if(!('speechSynthesis' in window)){notify('Este navegador no dispone de voz.');return;}sound=!sound;$('sound').setAttribute('aria-pressed',String(sound));$('sound').querySelector('span').textContent=sound?'Sonido activado':'Sonido apagado';if(!sound)speechSynthesis.cancel();};
+  volumeControl.oninput=()=>{
+    soundVolume=Number(volumeControl.value)/100;
+    localStorage.setItem('bingo-volume',volumeControl.value);
+    applyVolume();
+    if(sound)playBackgroundMusic();
+    else {backgroundMusic.pause();if('speechSynthesis' in window)speechSynthesis.cancel();}
+  };
+  document.addEventListener('click',playBackgroundMusic);
+  playBackgroundMusic();
   $('fullscreen').onclick=enterPresentation;
   $('fullscreen').title='Proyectar solo el sorteo. Espacio: sacar bolilla. A: automático. Enter: siguiente premio. Esc: salir.';
   $('presentation-room').onclick=leavePresentation;
@@ -327,6 +357,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
   $('reveal-close').onclick=()=>{if(drawAnimation?.phase!=='reveal')return;cancelDrawAnimation();render();$('draw').focus();};
   document.addEventListener('fullscreenchange',()=>{if(document.fullscreenElement===document.documentElement&&presenting)nativePresentation=true;else if(nativePresentation)closePresentation();});
   document.addEventListener('keydown',event=>{
+    playBackgroundMusic();
     if(!presenting||event.repeat||event.ctrlKey||event.metaKey||event.altKey)return;
     if(event.key==='Escape'){event.preventDefault();leavePresentation();return;}
     if(event.code==='Space'){event.preventDefault();if(!busy&&!state?.winner&&state?.drawn.length<75)draw();}

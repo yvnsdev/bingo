@@ -22,9 +22,24 @@ window.addEventListener('load', () => {
       if (end !== rest || rest === 'none') throw Error(name + ': stopping angle changed');
       ball.classList.add('is-spinning');
       getComputedStyle(ball, '::before').transform;
-      const spin = ball.getAnimations({subtree:true}).find(a => a.animationName === 'roulette-turn');
+      const animations = ball.getAnimations({subtree:true});
+      const start = animations.find(a => a.animationName === 'roulette-start');
+      const spin = animations.find(a => a.animationName === 'roulette-turn');
+      start.pause(); start.currentTime = 0;
       spin.pause(); spin.currentTime = 0;
       if (getComputedStyle(ball, '::before').transform !== rest) throw Error(name + ': starting angle changed');
+      const angle = () => {
+        const values = getComputedStyle(ball, '::before').transform.match(/matrix\(([^)]+)\)/)[1].split(',').map(Number);
+        return Math.atan2(values[1], values[0]) * 180 / Math.PI;
+      };
+      const sample = time => { start.currentTime = time; spin.currentTime = time; return angle(); };
+      const delta = (a,b) => (b-a+360)%360;
+      const a = sample(0), b = sample(300), c = sample(600), d = sample(900);
+      if (!(delta(a,b) < delta(b,c) && delta(b,c) < delta(c,d))) throw Error(name + ': startup does not accelerate');
+      const before = sample(899), after = sample(901);
+      if (Math.abs(delta(before,after) - 360/1.2*.002) > .01) throw Error(name + ': jump at cruising speed');
+      const cruise = sample(1200);
+      if (Math.abs(delta(d,cruise) - 360/1.2*.3) > .01) throw Error(name + ': incorrect cruising speed');
       ball.remove();
     }
     document.body.dataset.qa = 'ready';
