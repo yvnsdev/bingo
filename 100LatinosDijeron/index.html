@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#073f91">
+  <title>100 Latinos dijeron</title>
+  <link rel="stylesheet" href="style.css"><link rel="stylesheet" href="admin.css">
+  <script src="auth.js" defer></script><script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-left"><img src="assets/logo-100-latinos.png" alt="100 Latinos dijeron"><a href="../">← Volver al menú</a></div>
+    <strong>100 LATINOS DIJERON</strong>
+    <div class="topbar-actions"><label class="volume-control">♫ <input id="volume" type="range" min="0" max="100" value="25" step="1" aria-label="Volumen de efectos"><output id="volume-value" for="volume">25%</output></label><button id="fullscreen" class="header-button" type="button">⛶ Pantalla completa</button></div>
+  </header>
+
+  <main>
+    <section id="setup" class="setup-view">
+      <div class="setup-card">
+        <img src="assets/logo-100-latinos.png" alt="100 Latinos dijeron" class="setup-logo">
+        <span class="eyebrow">PREPARA EL ENFRENTAMIENTO</span>
+        <h1>La encuesta está lista</h1>
+        <p>Elige los equipos y dirige todo desde esta pantalla.</p>
+        <div class="team-inputs">
+          <label>Equipo izquierdo<input id="team-a-name" maxlength="24" value="Familia A"></label>
+          <label>Equipo derecho<input id="team-b-name" maxlength="24" value="Familia B"></label>
+        </div>
+        <div class="lobby-actions"><button id="start-game" class="primary" type="button">Iniciar juego →</button><button id="admin-login" class="secondary" type="button">Panel de administrador</button></div>
+      </div>
+    </section>
+
+    <section id="admin-view" class="admin-view" hidden>
+      <div class="admin-shell">
+        <div class="admin-heading"><div><span class="eyebrow">ZONA EXCLUSIVA</span><h1>Panel de administrador</h1><p id="admin-email"></p></div><div class="admin-heading-actions"><button id="admin-back" class="secondary compact">← Volver al juego</button><button id="admin-logout" class="secondary compact">Cerrar sesión</button></div></div>
+        <section class="presenter-panel"><div><span class="eyebrow">PREGUNTA DEL PRESENTADOR</span><h2 id="presenter-question">Seleccionando una pregunta…</h2><p id="presenter-answer-count"></p></div><div class="presenter-actions"><button id="random-question" class="secondary compact">↻ Elegir otra al azar</button><button id="admin-start-game" class="primary compact">Cargar en el tablero →</button></div></section>
+        <section class="console" aria-label="Controles del presentador">
+          <div class="console-title"><div><span class="eyebrow">CONSOLA DEL PRESENTADOR</span><h2>Control del tablero</h2></div><div><button id="change-question" class="secondary compact" type="button">Elegir pregunta</button><button id="sound-toggle" class="secondary compact" type="button" aria-pressed="true">♫ Sonido</button></div></div>
+          <div id="answer-controls" class="answer-controls"></div>
+          <div class="game-actions"><button id="wrong" class="wrong-button" type="button">✕ Respuesta incorrecta</button><button id="award-a" class="award-button" type="button">← Puntos al equipo izquierdo</button><button id="award-b" class="award-button" type="button">Puntos al equipo derecho →</button><button id="reveal-all" class="secondary" type="button">Revelar tablero</button><button id="next-round" class="primary compact" type="button">Siguiente ronda →</button><button id="reset-game" class="secondary" type="button">Reiniciar juego</button></div>
+        </section>
+        <section class="admin-stats"><article><strong id="question-total">0</strong><span>Encuestas</span></article><article><strong id="answer-total">0</strong><span>Respuestas</span></article><button id="new-question" class="primary compact">+ Nueva pregunta</button></section>
+        <section class="bank-panel"><div><span class="eyebrow">CONTENIDO DEL PROGRAMA</span><h2>Banco de preguntas</h2></div><div id="bank-list" class="bank-list"></div></section>
+      </div>
+    </section>
+
+    <section id="game" class="game-view" hidden>
+      <button id="exit-board" class="exit-board" type="button">← Volver</button>
+      <div class="stage">
+        <aside class="team team-a"><span>EQUIPO</span><input id="team-a-display" aria-label="Nombre del equipo izquierdo"><strong id="score-a">0</strong></aside>
+
+        <section class="center-stage">
+          <div class="round-bar"><span id="round-label">RONDA 1</span></div>
+          <div class="pot"><span>PUNTOS DE LA RONDA</span><strong id="round-score">0</strong></div>
+          <div id="answer-board" class="answer-board" aria-label="Tablero de respuestas"></div>
+          <div id="strikes" class="strikes" aria-label="Errores del equipo"></div>
+        </section>
+
+        <aside class="team team-b"><span>EQUIPO</span><input id="team-b-display" aria-label="Nombre del equipo derecho"><strong id="score-b">0</strong></aside>
+      </div>
+
+    </section>
+  </main>
+
+  <div id="strike-overlay" class="strike-overlay" hidden aria-live="assertive"><div class="giant-x">X</div></div>
+  <div id="toast" class="toast" hidden role="status"></div>
+
+  <dialog id="question-picker"><button class="close" data-close="question-picker" aria-label="Cerrar">×</button><span class="eyebrow">ELIGE LA ENCUESTA</span><h2>Preguntas disponibles</h2><div id="picker-list" class="picker-list"></div></dialog>
+
+  <dialog id="login-dialog"><form id="login-form"><button class="close" type="button" data-close="login-dialog" aria-label="Cerrar">×</button><span class="eyebrow">ACCESO ADMINISTRATIVO</span><h2>Gestiona las encuestas</h2><p>Usa la misma cuenta autorizada de Bingo y Monserrat.</p><label>Correo<input id="login-email" type="email" required autocomplete="username"></label><label>Contraseña<input id="login-password" type="password" required autocomplete="current-password"></label><p id="login-error" class="form-error"></p><button class="primary" type="submit">Ingresar al panel →</button><button id="demo-admin" class="secondary" type="button" hidden>Probar modo demostración</button></form></dialog>
+
+  <dialog id="editor-dialog"><form id="question-form"><button class="close" type="button" data-close="editor-dialog" aria-label="Cerrar">×</button><input id="edit-id" type="hidden"><span class="eyebrow">EDITOR DE ENCUESTAS</span><h2 id="editor-title">Nueva pregunta</h2><label>Pregunta<input id="edit-question" maxlength="180" required></label><div class="answer-editor-head"><strong>Respuestas del tablero</strong><span id="answer-editor-count">0 / 8</span></div><div id="answer-editor" class="answer-editor"></div><button id="add-answer" class="secondary add-answer" type="button">+ Agregar respuesta</button><label class="active-check"><input id="edit-active" type="checkbox" checked> Disponible para jugar</label><button class="primary" type="submit">Guardar pregunta</button><button id="delete-question" class="delete" type="button" hidden>Eliminar pregunta</button></form></dialog>
+</body>
+</html>

@@ -13,5 +13,6 @@ header{background:#09051dcc;border-bottom-color:#65dcff38;box-shadow:0 8px 40px 
 .bingo{border-color:#009eea88}.bingo .card-art{background:radial-gradient(circle,#0c7cc655 0,transparent 52%),linear-gradient(145deg,#111146,#070522)}.bingo-logo{display:block;width:205px;height:205px;object-fit:contain;filter:drop-shadow(0 0 15px #02bff5aa)}
 .monserrat{border-color:#d651c488}.monserrat .card-art{background:radial-gradient(circle,#a432995d 0,transparent 53%),linear-gradient(145deg,#24105b,#080522)}
 .soon{border-color:#ff786355}.soon .card-art{background:radial-gradient(circle,#ff6c6c55,transparent 60%),linear-gradient(145deg,#401a42,#160923)}
+.latinos{border-color:#159eea88}.latinos .card-art{background:radial-gradient(circle,#0cccf575 0,transparent 55%),linear-gradient(145deg,#063fb5,#050941)}.latinos-logo{display:block;width:235px;height:205px;object-fit:contain;filter:drop-shadow(0 0 18px #00baf1aa)}
 footer{border-top-color:#ffffff18;color:#999fc7}.ambient{opacity:.45}.ambient-one{background:#ff3f9d}.ambient-two{background:#18c9ff}
 @media(max-width:900px){.game-card:nth-child(n){transform:none}.game-card:not(.soon):hover,.game-card:focus-visible{transform:translateY(-7px)}}
