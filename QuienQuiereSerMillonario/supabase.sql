@@ -49,6 +49,9 @@ create table if not exists public.millionaire_answers (
 create index if not exists millionaire_rooms_owner_idx on public.millionaire_rooms(owner_id);
 create index if not exists millionaire_players_room_idx on public.millionaire_players(room_code);
 create index if not exists millionaire_answers_room_question_idx on public.millionaire_answers(room_code,question_index);
+alter table public.millionaire_players add column if not exists lifelines jsonb not null default '{"fifty":false,"call":false,"audience":false,"expert":false}';
+alter table public.millionaire_players add column if not exists lifeline_at jsonb not null default '{}';
+alter table public.millionaire_players add column if not exists hidden_options integer[] not null default '{}';
 alter table public.millionaire_rooms add column if not exists answer_deadline timestamptz;
 alter table public.millionaire_rooms add column if not exists lifeline_at jsonb not null default '{}'::jsonb;
 alter table public.millionaire_rooms drop constraint if exists millionaire_rooms_status_check;
@@ -86,7 +89,7 @@ begin
   end if;
   if p_data ? 'token' and nullif(p_data->>'token','') is not null then v_token:=(p_data->>'token')::uuid; end if;
 
-  if p_action in ('questions','question_save','question_delete','rooms','create','show_rules','start','reveal','next','lifeline') and v_user is null then
+  if p_action in ('questions','question_save','question_delete','rooms','create','show_rules','start','reveal','next') and v_user is null then
     raise exception 'Inicia sesión como administrador.';
   end if;
 
@@ -140,7 +143,7 @@ begin
     select * into r from public.millionaire_rooms where code=v_code for update;
     if not found then raise exception 'No encontramos esa sala. Revisa el código.'; end if;
     v_is_host:=v_user is not null and r.owner_id=v_user;
-    if p_action in ('show_rules','start','reveal','next','lifeline') and not v_is_host then raise exception 'Solo quien creó la sala puede dirigir esta partida.'; end if;
+    if p_action in ('show_rules','start','reveal','next') and not v_is_host then raise exception 'Solo quien creó la sala puede dirigir esta partida.'; end if;
     if p_action='join' then
       if v_token is null then raise exception 'Falta la identificación del participante.'; end if;
       select * into p from public.millionaire_players where token=v_token and room_code=v_code;
@@ -170,7 +173,7 @@ begin
       select * into p from public.millionaire_players where token=v_token and room_code=v_code;
       if not found then raise exception 'Primero debes unirte a la sala.'; end if;
       v_option:=(p_data->>'option')::integer;
-      if v_option not between 0 and 3 or v_option=any(r.hidden_options) then raise exception 'Esa alternativa no está disponible.'; end if;
+      if v_option not between 0 and 3 or ((p.lifeline_at->>'fifty')::integer=r.question_index and v_option=any(p.hidden_options)) then raise exception 'Esa alternativa no está disponible.'; end if;
       insert into public.millionaire_answers(room_code,question_index,player_token,option_index) values(v_code,r.question_index,v_token,v_option)
       on conflict(room_code,question_index,player_token) do update set option_index=excluded.option_index,answered_at=now();
     elsif p_action='reveal' then
@@ -183,20 +186,27 @@ begin
       if r.question_index>=cardinality(r.question_ids)-1 then update public.millionaire_rooms set status='finished' where code=v_code returning * into r;
       else update public.millionaire_rooms set status='question',answer_deadline=clock_timestamp()+interval '20 seconds',question_index=question_index+1,hidden_options='{}' where code=v_code returning * into r; end if;
     elsif p_action='lifeline' then
-      if r.status<>'question' then raise exception 'Los comodines se usan mientras la pregunta está abierta.'; end if;
-      v_kind:=p_data->>'kind';if v_kind not in ('fifty','call','audience','expert') then raise exception 'Comodín no válido.'; end if;
-      if coalesce((r.lifelines->>v_kind)::boolean,false) then raise exception 'Ese comodín ya fue utilizado.'; end if;
+      select * into p from public.millionaire_players where token=v_token and room_code=v_code for update;
+      if not found then raise exception 'Primero debes unirte a la sala.'; end if;
+      if r.status<>'question' or r.answer_deadline is null or clock_timestamp()>=r.answer_deadline then raise exception 'El tiempo para usar comodines termino.'; end if;
+      v_kind:=p_data->>'kind';
+      if v_kind is null or v_kind not in ('fifty','call','audience','expert') then raise exception 'Comodin no valido.'; end if;
+      if coalesce((p.lifelines->>v_kind)::boolean,false) then raise exception 'Ya usaste este comodin.'; end if;
       if v_kind='fifty' then
         select correct_index into v_correct from public.millionaire_questions where id=r.question_ids[r.question_index+1];
         select array_agg(i) into v_hidden from (select i from generate_series(0,3)i where i<>v_correct order by random() limit 2)x;
-        update public.millionaire_rooms set lifelines=jsonb_set(lifelines,array[v_kind],'true'),lifeline_at=jsonb_set(lifeline_at,array[v_kind],to_jsonb(question_index)),hidden_options=v_hidden where code=v_code returning * into r;
-      else update public.millionaire_rooms set lifelines=jsonb_set(lifelines,array[v_kind],'true'),lifeline_at=jsonb_set(lifeline_at,array[v_kind],to_jsonb(question_index)) where code=v_code returning * into r; end if;
+      else v_hidden:=p.hidden_options; end if;
+      update public.millionaire_players set lifelines=jsonb_set(lifelines,array[v_kind],'true'),lifeline_at=jsonb_set(lifeline_at,array[v_kind],to_jsonb(r.question_index)),hidden_options=v_hidden where token=v_token and room_code=v_code returning * into p;
     end if;
   end if;
 
   v_is_host:=v_user is not null and r.owner_id=v_user;
   if coalesce((p_data->>'as_host')::boolean,false) and not v_is_host then raise exception 'No tienes acceso al panel de esta sala.'; end if;
-  if not v_is_host then
+  -- Host operations already verify ownership; they do not require a player token.
+  if not (v_is_host and (
+    coalesce((p_data->>'as_host')::boolean,false)
+    or p_action in ('create','show_rules','start','reveal','next')
+  )) then
     select * into p from public.millionaire_players where room_code=r.code and token=v_token;
     if not found then raise exception 'Debes unirte a la sala para ver la partida.'; end if;
   end if;
@@ -206,13 +216,13 @@ begin
     if not found then raise exception 'La pregunta actual ya no está disponible. Crea una sala nueva.'; end if;
     v_question:=jsonb_build_object('id',q.id,'text',q.text,'options',to_jsonb(q.options),'difficulty',q.difficulty,
       'correct_index',case when r.status='reveal' then q.correct_index else null end,
-      'expert_hint',case when r.status='reveal' or (r.lifeline_at->>'expert')::integer=r.question_index then q.expert_hint else null end);
+      'expert_hint',case when r.status='reveal' or (p.lifeline_at->>'expert')::integer=r.question_index then q.expert_hint else null end);
   end if;
   select option_index into v_my_answer from public.millionaire_answers where room_code=r.code and question_index=r.question_index and player_token=v_token;
-  v_show_distribution:=r.status='reveal' or (r.lifeline_at->>'audience')::integer=r.question_index;
+  v_show_distribution:=r.status='reveal' or (p.lifeline_at->>'audience')::integer=r.question_index;
   if r.status='reveal' then
     select jsonb_build_array(count(*) filter(where option_index=0),count(*) filter(where option_index=1),count(*) filter(where option_index=2),count(*) filter(where option_index=3)) into v_distribution from public.millionaire_answers where room_code=r.code and question_index=r.question_index;
-  elsif (r.lifeline_at->>'audience')::integer=r.question_index then
+  elsif (p.lifeline_at->>'audience')::integer=r.question_index then
     v_distribution:=case q.correct_index
       when 0 then '[61,14,16,9]'::jsonb
       when 1 then '[11,64,16,9]'::jsonb
@@ -224,10 +234,10 @@ begin
     'players',coalesce((select jsonb_agg(jsonb_build_object('name',mp.name,'score',mp.score) order by mp.score desc,mp.created_at) from public.millionaire_players mp where mp.room_code=r.code),'[]'::jsonb),
     'answer_count',(select count(*) from public.millionaire_answers ma where ma.room_code=r.code and ma.question_index=r.question_index),
     'my_answer',v_my_answer,'distribution',v_distribution,
-    'expert_answer',case when (r.lifeline_at->>'expert')::integer=r.question_index then q.correct_index else null end,
-    'call_answer',case when (r.lifeline_at->>'call')::integer=r.question_index then q.correct_index else null end,
+    'expert_answer',case when (p.lifeline_at->>'expert')::integer=r.question_index then q.correct_index else null end,
+    'call_answer',case when (p.lifeline_at->>'call')::integer=r.question_index then q.correct_index else null end,
     'correct_voters',case when r.status='reveal' then coalesce((select jsonb_agg(mp.name order by mp.created_at) from public.millionaire_players mp join public.millionaire_answers ma on ma.player_token=mp.token and ma.room_code=r.code and ma.question_index=r.question_index where mp.room_code=r.code and ma.option_index=q.correct_index),'[]'::jsonb) else '[]'::jsonb end,
-    'lifelines',r.lifelines,'lifeline_at',r.lifeline_at,'hidden',to_jsonb(r.hidden_options),'name',p.name,'as_host',v_is_host);
+    'lifelines',coalesce(p.lifelines,'{}'::jsonb),'lifeline_at',p.lifeline_at,'hidden',case when (p.lifeline_at->>'fifty')::integer=r.question_index then to_jsonb(p.hidden_options) else '[]'::jsonb end,'name',p.name,'as_host',v_is_host);
 end;
 $$;
 

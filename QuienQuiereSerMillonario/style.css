@@ -75,3 +75,27 @@ img.game-emblem{width:120px;height:auto;margin:0 auto 18px}
 .fifty-modal-icon{width:150px;margin:20px auto;padding:22px 12px;border:3px solid #fff;border-radius:50%;background:radial-gradient(ellipse,#302c8a,#08082d);text-align:center;font:bold 32px 'Outfit';color:var(--gold)}
 
 .question-clock{color:var(--gold);font-variant-numeric:tabular-nums;white-space:nowrap}.question-clock.expired{color:#ff8296}.question-meta{flex-wrap:wrap;gap:10px}
+
+.question-clock{display:inline-flex;align-items:center;justify-content:center;min-width:100px;padding:10px 16px;border:2px solid var(--gold);border-radius:12px;background:#09082d;font-size:24px}.player-lifelines{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:20px 0}.player-lifelines .lifeline{width:100%;height:auto;min-height:58px;padding:10px;border-radius:30px}
+
+/* Gold frame stays vivid even on read-only presentation buttons. */
+.answers .answer{isolation:isolate;background:linear-gradient(180deg,#fff0ac,var(--gold) 45%,#bb8528);color:#fffaf0;opacity:1;filter:none}
+.answers .answer::before{inset:2px;z-index:-1;background:linear-gradient(180deg,#343391,#17134f 55%,#28236d)}
+.answers .answer:disabled{opacity:1;cursor:default}
+.answers .answer span{color:#ffdc79;font-weight:800}
+.answers .answer.selected::before{background:linear-gradient(180deg,#ad7415,#70420b)}
+.answers .answer.correct{background:#9affbd}
+.answers .answer.correct::before{background:linear-gradient(180deg,#227d4d,#10432c)}
+.answers .answer.wrong::before{background:linear-gradient(180deg,#282440,#171329)}
+.answers .answer.wrong{color:#b9b4cb}
+.answers .answer.eliminated{visibility:hidden;opacity:0;animation:none}
+.question-clock{--remaining:100%;position:sticky;top:8px;z-index:5;display:block;justify-self:center;width:190px;min-width:0;margin:0 auto 16px;padding:10px 20px 14px;text-align:center;color:var(--gold);border:1px solid var(--gold);border-radius:14px;background:linear-gradient(180deg,#28236d,#09082d);box-shadow:0 0 22px #6f6cff66;overflow:hidden}
+.question-clock>[data-clock-label]{display:block;font:700 9px 'DM Sans',sans-serif;letter-spacing:1.6px;color:#e9e3ff}
+.question-clock [data-clock-value]{font:800 38px 'Outfit',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:3px;text-shadow:0 0 16px #f5c75f55}
+.question-clock div>span{font-size:10px;letter-spacing:1px}
+.question-clock::after{content:'';position:absolute;bottom:0;left:0;width:var(--remaining);height:4px;background:var(--gold);transition:width .2s linear}
+.question-clock.urgent{border-color:#ffac57;color:#ffac57;box-shadow:0 0 22px #f5a34f66}
+.question-clock.expired{color:#ff8296;border-color:#ff8296}
+.presentation .question-clock{width:210px;margin-bottom:8px}
+.presentation-content{align-content:safe center}
+@media(max-width:540px){.question-clock{width:170px;top:4px;padding:8px 15px 12px}.question-clock [data-clock-value]{font-size:32px}}
